@@ -25,7 +25,7 @@ class BasicBlock(nn.Module):
     def __init__(self,in_channels,channels,stride=1):
         super(BasicBlock,self).__init__()
         self.conv1 = conv3x3(in_channels,channels,stride)
-        self.relu = nn.LeakyReLU(0.1,inplace=True)
+        self.relu = nn.LeakyReLU(0.1)
         self.bn1 = nn.BatchNorm2d(channels)
         self.conv2 = conv3x3(channels,channels)
         if in_channels != channels or stride!=1:
@@ -55,7 +55,7 @@ class Bottleneck(nn.Module):
     def __init__(self,in_channels,channels,stride=1):
         super(Bottleneck,self).__init__()
         self.conv1 = conv1x1(in_channels,channels,stride=stride)
-        self.relu = nn.LeakyReLU(0.1,inplace=True)
+        self.relu = nn.LeakyReLU(0.1)
         self.bn1 = nn.BatchNorm2d(channels)
         self.conv2 = conv3x3(channels,channels)
         if in_channels != channels*Bottleneck.multiple or stride!=1:

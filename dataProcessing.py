@@ -158,25 +158,25 @@ class WheatDet(data.Dataset):
             data = color_normalize(data,self.cfg.RGB_mean)
             data = self.img_to_tensor(data)
             #labels = self.fill_with_zeros(labels,n)
-            info ={'size':(h,w)}
-            return data,labels,heatmaps,info          
+            return data,labels,heatmaps         
         else:
             #validation set
             data = color_normalize(img,self.cfg.RGB_mean)
             data = resize(data,self.cfg.inp_size)
             data = self.img_to_tensor(data)
             #labels = self.fill_with_zeros(labels,n)
-            info ={'size':(h,w)}
+            info ={'size':(h,w),'img_id':name}
             return data,labels,info
     def collate_fn(self,batch):
         if self.train:
-            data,labels,heatmaps,info  = list(zip(*batch))
+            data,labels,heatmaps = list(zip(*batch))
             heatmaps = stack_list(heatmaps)
         else:
             data,labels,info = list(zip(*batch))
+            info = stack_dicts(info)   
         tmp =[]
         data = torch.stack(data)            
-        info = stack_dicts(info)           
+                
         for i,bboxes in enumerate(labels):
             if len(bboxes)>0:
                 label = torch.zeros(len(bboxes),5)
@@ -185,7 +185,7 @@ class WheatDet(data.Dataset):
                 tmp.append(label)
         labels = torch.cat(tmp,dim=0)
         if self.train:
-            return data,labels,heatmaps,info,self.cfg.inp_size
+            return data,labels,heatmaps,self.cfg.inp_size
         else:
             return data,labels,info,self.cfg.inp_size
 

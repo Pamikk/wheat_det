@@ -9,7 +9,7 @@ class Bottleneck(nn.Module):
     def __init__(self,in_channels,channels,stride=1):
         super(Bottleneck,self).__init__()
         self.conv1 = conv1x1(in_channels,channels,stride=stride)
-        self.relu = nn.LeakyReLU(0.1,inplace=True)
+        self.relu = nn.LeakyReLU(0.1)
         self.bn1 = nn.BatchNorm2d(channels)
         self.conv2 = conv3x3(channels,channels)
         if in_channels != channels*Bottleneck.multiple or stride!=1:
@@ -45,7 +45,7 @@ class LocNet(nn.Module):
         predicts = []
         ups = []
         self.channel = 256 #generalize to the same channel before prediction
-        self.relu = nn.LeakyReLU(0.1,inplace=True)
+        self.relu = nn.LeakyReLU(0.1)
         for i in range(len(channels)):
             layers.append(self.stack_blocks(channels[i]))
             if i==0:

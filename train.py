@@ -31,7 +31,7 @@ if __name__ == "__main__":
     datasets = {'train':train_loader,'val':val_loader}
     config.exp_name = args.exp
     config.device = torch.device("cuda")
-
+    torch.cuda.empty_cache()
     #network
     network = Network(args.res,config.int_shape,config.cls_num)
 

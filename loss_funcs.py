@@ -14,15 +14,18 @@ class MyLoss(nn.Module):
         super(MyLoss,self).__init__()
         self.bbox_loss = YOLOLoss()
         self.device='cuda'
-        self.bbox_scale = 1
-        self.heatmap_scale = 1
-    def forward(self,out,int_out,labels,heatmaps,size):
+    def forward(self,out,size,int_out=None,labels=None,heatmaps=None,infer=False):
+        if infer:
+            bboxes = self.bbox_loss(out,None,size,infer)
+            return bboxes
+        else:
+            bbox_loss = self.bbox_loss(out,labels,size)
         self.device = out.device
         heatmap_loss = torch.tensor(0,dtype=out.dtype,device=out.device)
         for i in range(len(heatmaps)):
-            heatmap_loss +=mse_loss(int_out[i],heatmaps[i].to(out.device))
-        bbox_loss = self.bbox_loss(out,labels,size)
-        return self.bbox_scale*bbox_loss+self.heatmap_scale*heatmap_loss
+            heatmap_loss +=mse_loss(torch.sigmoid(int_out[i]),heatmaps[i].to(out.device))
+        
+        return bbox_loss,heatmap_loss/4
 
 
 class YOLOLoss(nn.Module):
@@ -99,7 +102,7 @@ class YOLOLoss(nn.Module):
 
         return scores,obj_mask,noobj_mask,tx,ty,tw,th,tconf
     
-    def forward(self,out,gts,size):
+    def forward(self,out,gts,size,infer=False):
         nb,_,nh,nw = out.shape
         self.device ='cuda' if out.is_cuda else 'cpu'
         grid_size = nh
@@ -124,8 +127,10 @@ class YOLOLoss(nn.Module):
         pd_bboxes[:,:,:,:,3] = torch.exp(hs) * self.anchor_h
 
         
-        
-        scores,obj_mask,noobj_mask,tx,ty,tw,th,tconf = self.build_target(pd_bboxes,gts)
+        if infer:
+            return torch.cat((pd_bboxes/grid_size,conf),axis=-1)
+        else:
+            scores,obj_mask,noobj_mask,tx,ty,tw,th,tconf = self.build_target(pd_bboxes,gts)
 
         loss_x = mse_loss(xs[obj_mask],tx[obj_mask])
         loss_y = mse_loss(ys[obj_mask],ty[obj_mask])
