@@ -25,14 +25,14 @@ class BasicBlock(nn.Module):
     def __init__(self,in_channels,channels,stride=1):
         super(BasicBlock,self).__init__()
         self.conv1 = conv3x3(in_channels,channels,stride)
-        self.relu = nn.LeakyReLU(0.1)
+        self.relu = nn.ReLU()
         self.bn1 = nn.BatchNorm2d(channels)
         self.conv2 = conv3x3(channels,channels)
         if in_channels != channels or stride!=1:
             self.downsample =  nn.Sequential(conv1x1(in_channels,channels,stride),
                                             nn.BatchNorm2d(channels))
         else:
-            self.downsample = nn.Identity
+            self.downsample = nn.Identity()
         self.bn2 = nn.BatchNorm2d(channels)
     def forward(self,x):
         y = self.conv1(x)
@@ -55,7 +55,7 @@ class Bottleneck(nn.Module):
     def __init__(self,in_channels,channels,stride=1):
         super(Bottleneck,self).__init__()
         self.conv1 = conv1x1(in_channels,channels,stride=stride)
-        self.relu = nn.LeakyReLU(0.1)
+        self.relu = nn.ReLU()
         self.bn1 = nn.BatchNorm2d(channels)
         self.conv2 = conv3x3(channels,channels)
         if in_channels != channels*Bottleneck.multiple or stride!=1:
@@ -92,7 +92,7 @@ class ResNet(nn.Module):
         self.in_channel = channels[0] #64
         self.conv1 = nn.Conv2d(3,self.in_channel,kernel_size=7,stride=2,padding=3,bias=False)
         self.bn1 = nn.BatchNorm2d(self.in_channel)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
         self.url = urls['res'+str(depth)]
         self.channels=[]
         if depth < 50 :

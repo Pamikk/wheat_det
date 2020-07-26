@@ -23,31 +23,17 @@ def brightness_scale(src,vs):
     img[:,:,2] *= (1+vs)
     img[:,:,2][img[:,:,2]>255] = 255
     return img
-def augment(src,ang,crop,vs,flip=False):
+def augment(src,ang,vs,flip=False):
     #flip
     if flip:
-        dst = src[:,::-1,:]
+        dst = cv2.flip(src,1)
     else:
         dst = src
     #rotation
-    h,w,c = dst.shape
+    h,w,_ = dst.shape
     center =(w/2,h/2)
     mat = cv2.getRotationMatrix2D(center, ang, 1.0)
     dst = cv2.warpAffine(dst,mat,(w,h))
-    #crop
-    dh,dw = crop
-    if dw>=0:
-        dst = dst[:,dw:,:]
-        padx =0
-    else:
-        padx = abs(dw)
-
-    if dh>=0:
-        dst = dst[dh:,:,:]
-        pady = 0
-    else:
-        pady = abs(dh)
-    dst = cv2.copyMakeBorder(dst,padx,0,pady,0,cv2.BORDER_CONSTANT,0)
   
     return brightness_scale(dst,vs),mat
 def resize(src,tsize):

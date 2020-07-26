@@ -15,10 +15,10 @@ class Logger(object):
     def write_loss(self,epoch,losses,lr):
         tmp = str(epoch)+'\t'+str(lr)+'\t'
         print('Epoch',':',epoch,'-',lr)
-        self.writer.add_scalar('lr',lr,step=epoch)
+        self.writer.add_scalar('lr',lr,epoch)
         for k in losses:            
-            self.writer.add_scalar(k,losses[k],step=epoch)
-            tmp+= str(round(losses[k],3))+'\t'
+            self.writer.add_scalar('Train/'+k,losses[k],epoch)
+            tmp+= str(round(losses[k],5))+'\t'
             print(k,':',losses[k])
         self.writer.flush()
         self.write_line2file('train',tmp)
@@ -28,9 +28,9 @@ class Logger(object):
         for k in metrics:
             if k in save:
                 tmp +=str(metrics[k])+'\t'            
-            self.writer.add_scalar('val'+k,metrics[k],step=epoch)
+            self.writer.add_scalar('Val/'+k,metrics[k],epoch)
             print(k,':',metrics[k])
-        self.writer.flush()
+        
         self.write_line2file('val',tmp)
 
 def iou_wo_center(w1,h1,w2,h2):
@@ -58,10 +58,10 @@ def iou_wt_center(bbox1,bbox2):
     inter_ymin = torch.max(ymin1,ymin2)
     inter_ymax = torch.min(ymax1,ymax2)
 
-    inter = abs((inter_ymax-inter_ymin)*(inter_xmax-inter_xmin))+1
+    inter = (inter_ymax-inter_ymin)*(inter_xmax-inter_xmin) +1e-16
     area1 = (ymax1-ymin1)*(xmax1-xmin1)
     area2 = (ymax2-ymin2)*(xmax2-xmin2)
-    union = abs(area1+area2 - inter) + 1
+    union = area1+area2 - inter+1e-16
     return inter/union
 def iou_wt_center_np(bbox1,bbox2):
     #in numpy,only for evaluation,return a matrix m x n
@@ -85,10 +85,10 @@ def iou_wt_center_np(bbox1,bbox2):
     inter_ymin = np.maximum(ymin1.reshape(-1,1),ymin2.reshape(1,-1))
     inter_ymax = np.minimum(ymax1.reshape(-1,1),ymax2.reshape(1,-1))
 
-    inter = abs((inter_ymax-inter_ymin)*(inter_xmax-inter_xmin))+1
-    area1 = (ymax1-ymin1)*(xmax1-xmin1)
-    area2 = (ymax2-ymin2)*(xmax2-xmin2)
-    union = abs(area1+area2 - inter) +1
+    inter = (inter_ymax-inter_ymin)*(inter_xmax-inter_xmin)
+    area1 = ((ymax1-ymin1+1)*(xmax1-xmin1+1)).reshape(-1,1)
+    area2 = ((ymax2-ymin2+1)*(xmax2-xmin2+1)).reshape(1,-1)
+    union = area1+area2 - inter +1e-16
     return inter/union
 
 def cal_metrics(pd,gt,threshold=0.5):
@@ -100,22 +100,25 @@ def cal_metrics(pd,gt,threshold=0.5):
     if n>0 and m>0:
         ious = iou_wt_center_np(pd_bboxes,gt) #nxm
         scores = ious.max(axis=1) 
-        fp = scores <= 0.5
+        fp = scores <= threshold
 
         #only keep trues
-        ious = ious[1-fp,:]
+        ious = ious[~fp,:]
         fp = fp.sum() # transfer to scalar
+
 
         select_ids = ious.argmax(axis=1)
         #discard fps hit gt boxes has been hitted by bboxes with higher conf
-        tp = np.unique(select_ids)
-        fp += len(select_ids)-len(tp)
+        tp = len(np.unique(select_ids))
+        fp += len(select_ids)- tp
+
         
         # groud truth with no associated predicted object
-        fn = m-len(tp)
+        assert (fp+tp)==n
+        fn = m-tp
         p = tp/n
         r = tp/m
-        ap = tp/(fp+fn)
+        ap = tp/(fp+fn+tp)
         return p,r,ap
     elif m>0 or n >0 :
         return 0,0,0
@@ -132,12 +135,15 @@ def non_maximum_supression(preds,loc_score,conf_threshold=0.5,nms_threshold = 0.
     pds = preds[idx]
     keep = []
     while len(pds)>0:
-        ious = iou_wt_center(pds[0,:4],pds[:,:4])
-        assert ious[0]>=0.7
+        ious = iou_wt_center(pds[0,:4],pds[0:,:4])
+        if not(ious[0]>=0.7):
+            ious[0] =1
         mask = ious>nms_threshold
         weights = pds[mask,-1].view(-1,1)
         #merge predictions
         new = (weights * pds[mask,:4]).sum(dim=0)/weights.sum()
+        #hard-nms
+        #new = pds[0,:4]
         keep.append(new)
         pds = pds[~mask]
     return torch.stack(keep)

@@ -1,5 +1,8 @@
 # A Coarse-to-fine Wheat Head Detector with Intermediate Supervision
 
+- v1: with heatmap as intermediate supervision: seems not work
+- v2: introduce attention map and rewrite network as U-shape
+- v3: cascade YOLO
 - To do
   - [x] Metrics:precision,recall and AP
   - [ ] trainer.py
@@ -10,7 +13,6 @@
     - [ ] make_prediction
   - [ ] NMS
     - [x] soft-NMS
-    - [ ] NMS with loc score 
   - [x] tensorboard 
   - [ ] visualization
   - [ ] Paper

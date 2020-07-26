@@ -43,13 +43,13 @@ class WheatDet(data.Dataset):
 
     def img_to_tensor(self,img):
         return torch.tensor(np.transpose(img,[2,0,1]),dtype=torch.float)
-    def gen_gts(self,labels):
+    def gen_gts(self,labels,pad=(0,0)):
         gts = torch.zeros(labels.shape,dtype=torch.float)
         if len(labels) == 0:
             return gts
         n = len(labels)
-        xmins = labels[:,0]
-        ymins = labels[:,1]
+        xmins = labels[:,0] + pad[0]
+        ymins = labels[:,1] + pad[1]
         ws = labels[:,2]
         hs = labels[:,3]
         xs,ys = xmins + ws/2, ymins + hs/2
@@ -60,11 +60,11 @@ class WheatDet(data.Dataset):
         gts = torch.zeros((self.max_num,labels.shape[-1]),dtype=torch.float)
         gts[:n,:] = labels
         return gts
-    def get_trans_gts(self,labels,size,mat=np.eye(3),crop=(0,0),flip=True):
+    def get_trans_gts(self,labels,size,mat=np.eye(3),flip=True):
         #transfer
         if len(labels)== 0:
             return labels
-        h,w,_ = size
+        h,w = size
         cos = abs(mat[0,0])
         sin = abs(mat[0,1])        
         xs = labels[:,0]
@@ -74,14 +74,11 @@ class WheatDet(data.Dataset):
         if flip:
             xs = w-1-xs
             ys = h-1-ys
-        xs -= crop[1]
-        ys -= crop[0]
         
-        sy = 1/(h-crop[0]) #normalize to [0,1]
-        sx = 1/(w-crop[1])
+        sy = 1/h #normalize to [0,1]
+        sx = 1/w
         n = len(labels)
-        
-        tsize = self.cfg.inp_size
+
         pts = np.stack([xs,ys,np.ones([n])],axis=1).T
         tpts = torch.tensor(np.dot(mat,pts).T)
         labels[:,0] = tpts[:,0]*sx
@@ -97,26 +94,48 @@ class WheatDet(data.Dataset):
         return labels
     #process ground truths
     #useful for keypoint heatmaps
-    def gen_heatmap(self,labels,sigma):
+    def gen_heatmap(self,labels,sigmas):
         tsize = self.cfg.int_shape
-        gts = torch.zeros(tsize,dtype=torch.float)
+        heatmaps = [np.zeros(tsize) for _ in sigmas]
         for label in labels:
-            tmp = np.zeros(tsize,dtype=float)
-            if label[2]!=0:
-                x = int(label[0]*tsize[1])
-                y = int(label[1]*tsize[0])
-                if 0<=x< tsize[1] and 0<=y<tsize[0]:
-                    tmp[y,x] = 1
-                    tmp = torch.tensor(cv2.GaussianBlur(tmp,sigma,0),dtype=torch.float)
-                    tmp /= tmp.max()
-                    gts = torch.max(gts,tmp)
-                    # mutliple will calculate only once 
-                    # use max to avoid two center make one middle point with greater score
-                else:
-                    print(label)
+            tmp = np.zeros(tsize)
+            x = int(label[0]*tsize[1])
+            y = int(label[1]*tsize[0])
+            if 0<=x< tsize[1] and 0<=y<tsize[0]:
+                tmp[y,x] = 1
+                for i,sigma in enumerate(sigmas):
+                    tmp_ = cv2.GaussianBlur(tmp,sigma,0)
+                    tmp_ /= tmp_.max()
+                    heatmaps[i] = np.maximum(heatmaps[i],tmp_)
+                # mutliple will calculate only once 
+                # use max to avoid two center make one middle point with greater score
             else:
-                break
-        return gts
+                print(label)
+        heatmaps = [torch.tensor(heatmap,dtype=torch.float) for heatmap in heatmaps]
+        return heatmaps
+    def gen_attention_map(self,labels):
+        tsize = self.cfg.int_shape
+        heatmap = np.zeros(tsize)
+        for label in labels:
+            tmp = np.zeros(tsize)
+            x = int(label[0]*tsize[1])
+            y = int(label[1]*tsize[0])
+            if 0<=x< tsize[1] and 0<=y<tsize[0]:
+                heatmap = np.maximum(heatmaps,tmp)
+                # mutliple will calculate only once 
+                # use max to avoid two center make one middle point with greater score
+        heatmap =torch.tensor(heatmap,dtype=torch.float)
+        return heatmap
+
+    def pad_to_square(self,img):
+        h,w,_= img.shape
+        diff = abs(h-w)
+        if h>w:
+            pad = (diff//2,0,diff-diff//2,0)
+        else:
+            pad = (0,diff//2,0,diff-diff//2)
+        img = cv2.copyMakeBorder(img,pad[0],pad[1],pad[2],pad[3],cv2.BORDER_CONSTANT,0)
+        return img,(pad[0],pad[1])
 
     def __getitem__(self,idx):
         name = self.imgs[idx]
@@ -124,22 +143,17 @@ class WheatDet(data.Dataset):
         img = cv2.imread(os.path.join(self.img_path,name+'.jpg'))
         img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
         h,w,_ = img.shape
-        n = len(anno["bbox"])
-
-        labels = self.gen_gts(np.array(anno["bbox"],dtype=np.float))
+        if h!=w:
+            img,pad = self.pad_to_square(img)
+        else:
+            pad = (0,0)
+        h,w,_ = img.shape
+        labels = self.gen_gts(np.array(anno["bbox"],dtype=np.float),pad)
         if self.train:
-            #data augmentation,0.25 not augment,0.25 only rotate, 0.25 only crop, 0.25 both rotate and crop
-            # 0.5 for flip independently
-            pr,pc = random.randint(0,1),random.randint(0,1)
-            if pr == 1:
+            if random.uniform(0,1)>=0.25:
                 rot = random.uniform(-1,1)*self.cfg.rot
             else:
                 rot = 0
-            if pc == 1:
-                crop = (random.uniform(-1,1)*self.cfg.crop,random.uniform(-1,1)*self.cfg.crop)
-                crop = (int(crop[0]*h),int(crop[1]*w))
-            else:
-                crop = (0,0)
             if random.uniform(0,1)>=0.5:
                 flip = True
             else:
@@ -148,13 +162,10 @@ class WheatDet(data.Dataset):
                 vs = self.cfg.valid_scale*random.uniform(-1,1)
             else:
                 vs = 0
-            dst,mat = augment(img,rot,crop,vs,flip)
+            dst,mat = augment(img,rot,vs,flip)
             data = resize(dst,self.cfg.inp_size)
-            labels = self.get_trans_gts(labels,img.shape,mat,crop,flip)
-            n = len(labels)
-            heatmaps = list(range(4))
-            for i in range(4):
-                heatmaps[3-i] = self.gen_heatmap(labels,self.cfg.sigmas[i])
+            labels = self.get_trans_gts(labels,(h,w),mat,flip)
+            heatmaps = self.gen_heatmap(labels,self.cfg.sigmas[::-1])
             data = color_normalize(data,self.cfg.RGB_mean)
             data = self.img_to_tensor(data)
             #labels = self.fill_with_zeros(labels,n)
@@ -183,11 +194,14 @@ class WheatDet(data.Dataset):
                 label[:,1:] = bboxes
                 label[:,0] = i
                 tmp.append(label)
-        labels = torch.cat(tmp,dim=0)
-        if self.train:
-            return data,labels,heatmaps,self.cfg.inp_size
+        if len(tmp)>0:
+            labels = torch.cat(tmp,dim=0)
         else:
-            return data,labels,info,self.cfg.inp_size
+            labels = torch.tensor(tmp,dtype=torch.float)
+        if self.train:
+            return data,labels,heatmaps
+        else:
+            return data,labels,info
 
                 
 

@@ -6,11 +6,13 @@ import torch.optim as optim
 import torch.nn.functional as F
 from tqdm import tqdm
 import os
+import json
 
 from loss_funcs import MyLoss
 from utils import Logger,cal_metrics,non_maximum_supression
-save=['mAP']
-thresholds = np.arange(0.5,0.8,0.05)
+tosave=['mAP']
+thresholds = np.arange(0.5,0.76,0.05)
+thresholds = [round(th,2) for th in thresholds]
 class Trainer:
     def __init__(self,cfg,datasets,net,epoch):
         self.cfg = cfg
@@ -26,6 +28,9 @@ class Trainer:
         self.lr_sheudler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,mode='max', factor=cfg.lr_factor, threshold=0.0001,patience=15,min_lr=cfg.min_lr)
         if not(os.path.exists(self.checkpoints)):
             os.mkdir(self.checkpoints)
+        self.predictions = os.path.join(self.checkpoints,'pred')
+        if not(os.path.exists(self.predictions)):
+            os.mkdir(self.predictions)
         start,total = epoch
         self.start = start        
         self.total = total
@@ -36,7 +41,7 @@ class Trainer:
         self.logger = Logger(log_dir)
         torch.cuda.empty_cache()
         self.save_every_k_epoch = cfg.save_every_k_epoch #-1 for not save and validate
-        self.val_every_k_epoch = 1
+        self.val_every_k_epoch = 2
         self.upadte_grad_every_k_batch = 1
 
         self.best_mAP = 0
@@ -49,8 +54,9 @@ class Trainer:
         self.alpha = 0.95 #for update moving Avg
         self.nms_threshold = cfg.nms_threshold
         self.conf_threshold = cfg.dc_threshold
+        self.save_pred = True
         #load from epoch if required
-        if start!=0:
+        if start>0:
             self.load_epoch(str(start))
         if start==-1:
             self.load_epoch('best')
@@ -76,13 +82,17 @@ class Trainer:
             info = torch.load(model_path)
             self.net.load_state_dict(info['net'])
             self.optimizer.load_state_dict(info['optimizer'])#might have bugs about device
+            for state in self.optimizer.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.to(self.device)
             self.lr_sheudler.load_state_dict(info['lr_scheduler'])
             self.start = info['epoch']+1
             self.best_mAP = info['mAP']
             self.best_mAP_epoch = info['mAP_epoch']
             self.movingAvg = info['movingAvg']
-            self.bestMovingAvg = info['bestmoving Avg']
-            self.bestMovingAvgEpoch = info['bestmoving AvgEpoch']
+            self.bestMovingAvg = info['bestmovingAvg']
+            self.bestMovingAvgEpoch = info['bestmovingAvgEpoch']
         else:
             print('no such model at:',model_path)
     def _updateMetrics(self,mAP,epoch):
@@ -107,10 +117,10 @@ class Trainer:
             running_bbox_loss = 0.0
             self.net.train()
             for i,data in tqdm(enumerate(self.trainset)):
-                inputs,labels,heatmaps,size = data
+                inputs,labels,heatmaps = data
                 locs,outs = self.net(inputs.to(self.device).float())
                 labels = labels.to(self.device).float()
-                heatmap_loss,bbox_loss = self.loss(outs,size,locs,labels,heatmaps)
+                bbox_loss,heatmap_loss = self.loss(outs,locs,labels,heatmaps)
                 del inputs,outs,locs,labels,heatmaps
                 loss = heatmap_loss+bbox_loss
                 loss.backward()
@@ -124,9 +134,10 @@ class Trainer:
             lr = self.optimizer.param_groups[0]['lr']
             self.logger.write_loss(epoch,{'total':running_loss/n,'bbox':running_bbox_loss/n,'heatmap':running_heatmap_loss/n},lr)
             if (epoch+1)%self.val_every_k_epoch==0:
-                self.validate(epoch)
+                mAP = self.validate(epoch,self.save_pred)
+                self._updateMetrics(mAP,epoch)
             #step lr
-            self.lr_sheudler.step(self.movingAvg)
+            self.lr_sheudler.step(running_loss)
             if (epoch+1)%self.save_every_k_epoch==0:
                 self.save_epoch(str(epoch),epoch)
             epoch +=1
@@ -135,7 +146,6 @@ class Trainer:
         self.save_epoch(str(epoch),epoch)
     def validate(self,epoch,save=False):
         self.net.eval()
-        start = time.time()
         res = {}
         print('start Validation Epoch:',epoch)
         with torch.no_grad():
@@ -145,10 +155,10 @@ class Trainer:
             mAP = 0
             count = 0
             for _,data in tqdm(enumerate(self.valset)):
-                inputs,labels,info,size = data
+                inputs,labels,info = data
                 locs,outs = self.net(inputs.to(self.device).float())
                 loc_scores = torch.sigmoid(locs[-1]).detach().cpu().numpy()
-                pds = self.loss(outs,size,infer=True)
+                pds = self.loss(outs,infer=True)
                 nB = pds.shape[0]
                 pds = pds.view(nB,-1,5)# resize to batch,pd_num,5 
                 for b in range(nB):
@@ -158,7 +168,9 @@ class Trainer:
                     size = info['size'][b]
                     pred[:,[0,2]]*=size[1]
                     pred[:,[1,3]]*=size[0]
-                    res[name] = pred.cpu().numpy()
+                    pds_ = list(pred.cpu().numpy().astype(float))
+                    pds_ = [list(pd) for pd in pds_]
+                    res[name] = pds_
                     pred_nms = non_maximum_supression(pred,loc_score,self.conf_threshold, self.nms_threshold)
                     count+=1
                     total = 0
@@ -171,18 +183,20 @@ class Trainer:
                     mAP += 1.0*total/len(thresholds)
         metrics = {}
         for th in thresholds:
-            metrics['AP('+str(th)+')'] = 1.0*APs[th]/count
-            metrics['Precision('+str(th)+')'] = 1.0*precisions[th]/count
-            metrics['Recall('+str(th)+')'] = 1.0*recalls[th]/count
+            metrics['AP/'+str(th)] = 1.0*APs[th]/count
+            metrics['Precision/'+str(th)] = 1.0*precisions[th]/count
+            metrics['Recall/'+str(th)] = 1.0*recalls[th]/count
         mAP = 1.0*mAP/count
         metrics['mAP'] = mAP
-        self.logger.write_metrics(epoch,metrics,save)
+        self.logger.write_metrics(epoch,metrics,tosave)
         if mAP >= self.best_mAP:
             self.best_mAP = mAP
             self.best_mAP_epoch = epoch
             self.save_epoch('best',epoch)
+        if save:
+            json.dump(res,open(os.path.join(self.predictions,'pred_epoch_'+str(epoch)+'.json'),'w'))
         print("best so far with mAP:",self.best_mAP)
-        self._updateMetrics(mAP,epoch)
+        return mAP
         
 
 

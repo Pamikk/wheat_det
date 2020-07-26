@@ -16,21 +16,21 @@ class Config:
             self.file='../../dataset/global-wheat/train.json'
             self.bs = 16 # batch size
             #augmentation parameter
-            self.rot = 10
+            self.rot = 15
             #self.scale = 0.25
             self.crop = 0.2
             self.flip = True
             self.valid_scale = 0.25
-            self.sigmas =[(3,3),(5,5),(9,9),(13,13)]
+            self.sigmas =[(1,1),(3,3),(5,5),(9,9)]
             #train_setting
-            self.lr = 1e-4
+            self.lr = 1e-3
             self.weight_decay=1e-5
             self.min_lr = 1e-7
             self.lr_factor = 0.5
             #exp_setting
-            self.save_every_k_epoch = 1
+            self.save_every_k_epoch = 10
             self.nms_threshold = 0.5
-            self.dc_threshold = 0
+            self.dc_threshold = 0.05
 
         else:
             self.file = '../../dataset/global-wheat/val.json'
