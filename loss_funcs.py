@@ -5,7 +5,7 @@ from utils import iou_wo_center,iou_wt_center
 Anchors = [(0.1066,0.17),(0.1604,0.093),(0.0571,0.0554),(0.0748,0.09763),(0.1003,0.0618)]
 Anchors = [(0.11,0.11),(0.06,0.06),(0.12,0.06),(0.16,0.15),(0.07,0.095)]
 #directly get by normalized anchor size, not accute according to YOLOv2, need change distance metric
-__all__=["MyLoss","Anchors"]  
+__all__=["MyLoss","MyLoss_v2"]  
 
 mse_loss = nn.MSELoss()
 bce_loss = nn.BCELoss()
@@ -28,20 +28,35 @@ class MyLoss(nn.Module):
         
         return bbox_loss,heatmap_loss/4
 
+class MyLoss_v2(nn.Module):
+    def __init__(self,):
+        super(MyLoss_v2,self).__init__()
+        self.bbox_loss = YOLOLoss()
+        self.device='cuda'
+    def forward(self,out,labels=None,infer=False):
+        if infer:
+            bboxes = self.bbox_loss(out,None,infer)
+            return bboxes
+        else:
+            bbox_loss = self.bbox_loss(out,labels)
+        self.device = out.device
+        
+        return bbox_loss
 
 class YOLOLoss(nn.Module):
     #Reference:https://github.com/eriklindernoren/PyTorch-YOLOv3 YOLO layer in model
-    def __init__(self):
+    def __init__(self,th=0.5,noobject_scale=100,coarse= False):
         super(YOLOLoss,self).__init__()
         self.anchors = np.array(Anchors)
         self.num_anchor = len(Anchors)
         self.object_scale = 1
-        self.noobject_scale = 10
+        self.noobject_scale = noobject_scale
         #self.cls_num = 1#only wheat in this case,so ignore
         self.grid_size = 0
-        self.ignore_thres = 0.5
+        self.ignore_thres = th
         self.device= 'cuda'
         self.target_num = 120
+        self.coarse = coarse
     def get_mesh_grid(self,grid_size):
         self.grid_size = grid_size
         x = np.arange(0,grid_size,1)
@@ -53,6 +68,8 @@ class YOLOLoss(nn.Module):
         self.scaled_anchors = torch.tensor(self.anchors*grid_size,dtype=torch.float,device=self.device)
         self.anchor_w = torch.tensor(self.scaled_anchors[:,0]).view(1,self.num_anchor,1,1).to(dtype=torch.float,device=self.device)
         self.anchor_h = torch.tensor(self.scaled_anchors[:,1]).view(1,self.num_anchor,1,1).to(dtype=torch.float,device=self.device)
+    def build_target_coarse(self,pd,labels):
+        pass
     def build_target(self,pd,labels):
         self.device ='cuda' if pd.is_cuda else 'cpu'
         nB,nA,nG,_,_ = pd.shape

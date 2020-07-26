@@ -127,6 +127,12 @@ class RefineNet(nn.Module):
         res = self.predict(feats)
         return res
 
+class YOLOU(nn.Module):
+    def __init__(self,channels,class_num):
+        super(YOLOU,self).__init__()
+        
+
+
 
 
 

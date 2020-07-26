@@ -165,11 +165,10 @@ class WheatDet(data.Dataset):
             dst,mat = augment(img,rot,vs,flip)
             data = resize(dst,self.cfg.inp_size)
             labels = self.get_trans_gts(labels,(h,w),mat,flip)
-            heatmaps = self.gen_heatmap(labels,self.cfg.sigmas[::-1])
             data = color_normalize(data,self.cfg.RGB_mean)
             data = self.img_to_tensor(data)
             #labels = self.fill_with_zeros(labels,n)
-            return data,labels,heatmaps         
+            return data,labels        
         else:
             #validation set
             data = color_normalize(img,self.cfg.RGB_mean)
@@ -180,8 +179,7 @@ class WheatDet(data.Dataset):
             return data,labels,info
     def collate_fn(self,batch):
         if self.train:
-            data,labels,heatmaps = list(zip(*batch))
-            heatmaps = stack_list(heatmaps)
+            data,labels = list(zip(*batch))
         else:
             data,labels,info = list(zip(*batch))
             info = stack_dicts(info)   
@@ -199,7 +197,7 @@ class WheatDet(data.Dataset):
         else:
             labels = torch.tensor(tmp,dtype=torch.float)
         if self.train:
-            return data,labels,heatmaps
+            return data,labels
         else:
             return data,labels,info
 

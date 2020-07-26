@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 ###files
 from config import Config as cfg
 from dataProcessing import WheatDet
-from models.network import Network 
+from models.network import *
 from trainer import Trainer
 import warnings
 
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     torch.cuda.empty_cache()
     config.res = args.res
     #network
-    network = Network(config.res,config.int_shape,config.cls_num)
+    network = Networkv2(config.res,config.int_shape,config.cls_num)
 
     det = Trainer(config,datasets,network,(args.resume,args.epochs))
     if args.val:

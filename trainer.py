@@ -8,7 +8,7 @@ from tqdm import tqdm
 import os
 import json
 
-from loss_funcs import MyLoss
+from loss_funcs import *
 from utils import Logger,cal_metrics,non_maximum_supression
 tosave=['mAP']
 thresholds = np.arange(0.5,0.76,0.05)
@@ -34,7 +34,7 @@ class Trainer:
         start,total = epoch
         self.start = start        
         self.total = total
-        self.loss = MyLoss()
+        self.loss = MyLoss_v2()
         log_dir = os.path.join(self.checkpoints,'logs')
         if not(os.path.exists(log_dir)):
             os.mkdir(log_dir)
@@ -113,26 +113,24 @@ class Trainer:
         n = len(self.trainset)
         while epoch < self.total:
             running_loss =0.0
-            running_heatmap_loss = 0.0
             running_bbox_loss = 0.0
             self.net.train()
             for i,data in tqdm(enumerate(self.trainset)):
-                inputs,labels,heatmaps = data
-                locs,outs = self.net(inputs.to(self.device).float())
+                inputs,labels = data
+                outs = self.net(inputs.to(self.device).float())
                 labels = labels.to(self.device).float()
-                bbox_loss,heatmap_loss = self.loss(outs,locs,labels,heatmaps)
-                del inputs,outs,locs,labels,heatmaps
-                loss = heatmap_loss+bbox_loss
+                bbox_loss = self.loss(outs,labels)
+                del inputs,outs,labels
+                loss = bbox_loss
                 loss.backward()
                 if i == n-1 or (i+1) % self.upadte_grad_every_k_batch == 0:
                     self.optimizer.step()
                     self.optimizer.zero_grad()
                 running_loss += loss.item()
                 running_bbox_loss += bbox_loss.item()
-                running_heatmap_loss += heatmap_loss.item()
-                del loss,bbox_loss,heatmap_loss
+                del loss,bbox_loss
             lr = self.optimizer.param_groups[0]['lr']
-            self.logger.write_loss(epoch,{'total':running_loss/n,'bbox':running_bbox_loss/n,'heatmap':running_heatmap_loss/n},lr)
+            self.logger.write_loss(epoch,{'total':running_loss/n,'bbox':running_bbox_loss/n},lr)
             if (epoch+1)%self.val_every_k_epoch==0:
                 mAP = self.validate(epoch,self.save_pred)
                 self._updateMetrics(mAP,epoch)
@@ -156,13 +154,11 @@ class Trainer:
             count = 0
             for _,data in tqdm(enumerate(self.valset)):
                 inputs,labels,info = data
-                locs,outs = self.net(inputs.to(self.device).float())
-                loc_scores = torch.sigmoid(locs[-1]).detach().cpu().numpy()
+                outs = self.net(inputs.to(self.device).float())
                 pds = self.loss(outs,infer=True)
                 nB = pds.shape[0]
                 pds = pds.view(nB,-1,5)# resize to batch,pd_num,5 
                 for b in range(nB):
-                    loc_score = loc_scores[b]
                     pred = pds[b].view(-1,5)
                     name = info['img_id'][b]
                     size = info['size'][b]
@@ -171,7 +167,7 @@ class Trainer:
                     pds_ = list(pred.cpu().numpy().astype(float))
                     pds_ = [list(pd) for pd in pds_]
                     res[name] = pds_
-                    pred_nms = non_maximum_supression(pred,loc_score,self.conf_threshold, self.nms_threshold)
+                    pred_nms = non_maximum_supression(pred,None,self.conf_threshold, self.nms_threshold)
                     count+=1
                     total = 0
                     for th in thresholds:
