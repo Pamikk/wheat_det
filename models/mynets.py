@@ -3,7 +3,7 @@ import torch
 import math
 import torch.nn.functional as F
 
-from .resnet import conv3x3,conv1x1
+from .backbone import conv3x3,conv1x1
 class Bottleneck(nn.Module):
     multiple = 2
     def __init__(self,in_channels,channels,stride=1):
@@ -127,9 +127,6 @@ class RefineNet(nn.Module):
         res = self.predict(feats)
         return res
 
-class YOLOU(nn.Module):
-    def __init__(self,channels,class_num):
-        super(YOLOU,self).__init__()
         
 
 

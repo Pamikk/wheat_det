@@ -2,7 +2,8 @@
 
 - v1: with heatmap as intermediate supervision: seems not work
 - v2: Resnet with YOLOv3 anchor-based head
-- v3: rewrite network as U-shape cascade YOLO
+- v3: rewrite network as U-shape + cascade YOLO + introduce attention
+- v4: cascade YOLO for High resolution image
 - To do
   - [x] Metrics:precision,recall and AP
   - [x] trainer.py
@@ -14,7 +15,7 @@
   - [ ] NMS
     - [x] soft-NMS
   - [ ] New model with Attention network
-  - [ ] With U-net as Backbone
+  - [x] With U-net as Backbone
   - [x] tensorboard 
   - [ ] visualization
   - [ ] Paper
