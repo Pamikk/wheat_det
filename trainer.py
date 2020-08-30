@@ -12,7 +12,7 @@ from utils import Logger
 from utils import cal_metrics as cal_metrics
 from utils import non_maximum_supression as nms
 tosave=['mAP']
-thresholds = [0.5,0.75,0.95]
+thresholds = [0.5,0.75]
 class Trainer:
     def __init__(self,cfg,datasets,net,loss,epoch):
         self.cfg = cfg
@@ -31,7 +31,7 @@ class Trainer:
         self.checkpoints = os.path.join(cfg.checkpoint,name)
         self.device = cfg.device
         self.net = self.net
-        self.optimizer = optim.Adam(self.net.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
+        self.optimizer = optim.SGD(self.net.parameters(),lr=cfg.lr,momentum=cfg.momentum,weight_decay=cfg.weight_decay)
         self.lr_sheudler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,mode='min', factor=cfg.lr_factor, threshold=0.0001,patience=4,min_lr=cfg.min_lr)
         if not(os.path.exists(self.checkpoints)):
             os.mkdir(self.checkpoints)
@@ -127,13 +127,16 @@ class Trainer:
             inputs,labels = data
             outs = self.net(inputs.to(self.device).float())
             labels = labels.to(self.device).float()
-            display,loss = self.loss(outs,labels)
+            size = inputs.shape[-2:]
+            display,loss = self.loss(outs,labels,size)
             del inputs,outs,labels
             for k in running_loss:
                 if k in display.keys():
                     running_loss[k] += display[k]/n
             loss.backward()
-            
+            #solve gradient explosion problem caused by large learning rate or small batch size
+            #nn.utils.clip_grad_value_(self.net.parameters(), clip_value=2) 
+            nn.utils.clip_grad_norm_(self.net.parameters(),max_norm=2.0)
             if i == n-1 or (i+1) % self.upadte_grad_every_k_batch == 0:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
@@ -194,7 +197,8 @@ class Trainer:
             for _,data in tqdm(enumerate(valset)):
                 inputs,labels,info = data
                 outs = self.net(inputs.to(self.device).float())
-                pds = self.loss(outs,infer=True)
+                size = inputs.shape[-2:]
+                pds = self.loss(outs,size,infer=True)
                 nB = pds.shape[0]
                 for b in range(nB):
                     pred = pds[b].view(-1,self.cfg.cls_num+5)
@@ -239,7 +243,8 @@ class Trainer:
             for _,data in tqdm(enumerate(self.testset)):
                 inputs,info = data
                 outs = self.net(inputs.to(self.device).float())
-                pds = self.loss(outs,infer=True)
+                size = inputs.shape[-2:]
+                pds = self.loss(outs,size,infer=True)
                 nB = pds.shape[0]
                 for b in range(nB):
                     pred = pds[b].view(-1,self.cfg.cls_num+5)

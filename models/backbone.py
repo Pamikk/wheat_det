@@ -1,6 +1,9 @@
 import torch.nn as nn
 import math
 import torch.utils.model_zoo as model_zoo
+import os
+import numpy as np
+import torch
 #keep same varaible name from Resnet to use imagenet pretrained weight
 depths = {18:[2,2,2,2],34:[3,4,6,3],50:[3,4,6,3],101:[3,4,23,3],152:[3,8,36,3],53:[1,2,8,8,4]}
 channels = [64,128,256,512]
@@ -12,13 +15,13 @@ urls = {
     'res101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
     'res152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
 }
-def conv3x3(in_channels, out_channels, stride=1):
+def conv3x3(in_channels, out_channels, stride=1,bias=False):
     "3x3 convolution with padding"
     return nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride,
-                     padding=1, bias=False)
+                     padding=1, bias=bias)
 
-def conv1x1(in_channels,out_channels,stride=1):
-    return nn.Conv2d(in_channels,out_channels,kernel_size=1,stride=stride,bias=False)
+def conv1x1(in_channels,out_channels,stride=1,bias=False):
+    return nn.Conv2d(in_channels,out_channels,kernel_size=1,stride=stride,bias=bias)
 
 #bias will be added in normalization layer
 class BasicBlock(nn.Module):
@@ -42,7 +45,6 @@ class BasicBlock(nn.Module):
 
         y = self.conv2(y)
         y = self.bn2(y)
-        y = self.relu(y)
 
         if self.downsample != None:
             x = self.downsample(x)
@@ -77,13 +79,135 @@ class Bottleneck(nn.Module):
 
         y = self.conv3(y)
         y = self.bn3(y)
-        y = self.relu(y)
 
         x = self.downsample(x)
         y += x
         y = self.relu(y)
 
         return y
+
+class BaseBlock(nn.Module):
+    #for Darknet
+    multiple=2
+    def __init__(self,in_channels,channels,stride=1):
+        super(BaseBlock,self).__init__()
+        self.conv1 = conv1x1(in_channels,channels,stride)
+        self.relu = nn.LeakyReLU(0.1)
+        self.bn1 = nn.BatchNorm2d(channels)
+        self.conv2 = conv3x3(channels,channels*BaseBlock.multiple)
+        if in_channels != channels*BaseBlock.multiple or stride!=1:
+            self.downsample =  nn.Sequential(conv1x1(in_channels,channels*BaseBlock.multiple,stride),
+                                            nn.BatchNorm2d(channels*BaseBlock.multiple))
+        else:
+            self.downsample = nn.Identity()
+        self.bn2 = nn.BatchNorm2d(channels*BaseBlock.multiple)
+    def forward(self,x):
+        y = self.conv1(x)
+        y = self.bn1(y)
+        y = self.relu(y)
+
+        y = self.conv2(y)
+        y = self.bn2(y)
+
+        if self.downsample != None:
+            x = self.downsample(x)
+        y += x
+        y = self.relu(y)
+
+        return y
+class Darknet(nn.Module):
+    def __init__(self,path):
+        super(Darknet,self).__init__()
+        self.depths = [1,2,8,8,4]
+        self.levels = len(self.depths)
+        self.channels = [32,64,128,256,512]
+        self.relu = nn.LeakyReLU(0.1)
+        self.conv1 = conv3x3(3,32)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.in_channel = self.channels[0]
+        encoders = []
+        self.out_channels =[]
+        for i in range(self.levels):
+            encoders.append(self.make_encoders(self.channels[i],BaseBlock,depth=self.depths[i],downsample=True))
+        self.encoders = nn.ModuleList(encoders)
+        self.path = path
+        if os.path.exists(self.path):
+            self.load_dark_net()
+    def make_encoders(self,channel,block,depth=1,downsample=False):
+        blocks = []
+        if downsample:
+            out_channel = channel*2
+            blocks.append(nn.Sequential(conv3x3(self.in_channel,out_channel,stride=2),
+                          nn.BatchNorm2d(out_channel),self.relu))
+            self.in_channel = out_channel
+        for _ in range(depth):
+            blocks.append(block(self.in_channel,channel))
+            self.in_channel = channel*block.multiple
+        self.out_channels.insert(0,self.in_channel)
+        return nn.Sequential(*blocks)
+
+    def forward(self,x):
+        #suppose x has shape: 3,256,256
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        #32,256,256
+
+        feats = [x]
+        for encoder in self.encoders:
+            x = encoder(x)
+            feats.insert(0,x)
+        return feats
+    def load_dark_net(self):
+        # Open the weights file
+        with open(self.path, "rb") as f:
+            header = np.fromfile(f, dtype=np.int32, count=5)  # First five are header values
+            self.header_info = header  # Needed to write header when saving weights
+            self.seen = header[3]  # number of images seen during training
+            weights = np.fromfile(f, dtype=np.float32)  # The rest are weights
+        ptr = 0
+        stack = []
+        for m in self.modules():
+            if type(m) == nn.Conv2d:
+                if type(m.bias) == type(m.weight):
+                    #exist bias
+                    num_b = m.bias.numel()
+                    conv_b = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(m.bias)
+                    m.bias.data.copy_(conv_b)
+                    ptr += num_b
+                    # Load conv. weights
+                    num_w = m.weight.numel()
+                    conv_w = torch.from_numpy(weights[ptr : ptr + num_w]).view_as(m.weight)
+                    m.weight.data.copy_(conv_w)
+                    ptr += num_w
+                else:
+                    stack.append(m)
+            if type(m) == nn.BatchNorm2d:
+                num_b = m.bias.numel()  # Number of biases
+                # Bias
+                bn_b = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(m.bias)
+                m.bias.data.copy_(bn_b)
+                ptr += num_b
+                # Weight
+                bn_w = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(m.weight)
+                m.weight.data.copy_(bn_w)
+                ptr += num_b
+                # Running Mean
+                bn_rm = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(m.running_mean)
+                m.running_mean.data.copy_(bn_rm)
+                ptr += num_b
+                # Running Var
+                bn_rv = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(m.running_var)
+                m.running_var.data.copy_(bn_rv)
+                ptr += num_b
+                m = stack.pop(0)
+                # Load conv. weights
+                num_w = m.weight.numel()
+                conv_w = torch.from_numpy(weights[ptr : ptr + num_w]).view_as(m.weight)
+                m.weight.data.copy_(conv_w)
+                ptr += num_w
+                assert len(stack)==0
+        print("finish load from path:",self.path)
 
 class ResNet(nn.Module):
     def __init__(self,depth):
@@ -106,7 +230,7 @@ class ResNet(nn.Module):
         self.layer4 = self.stack_blocks(self.depths[3],channels[3],block,stride=2)
     def stack_blocks(self,depth,channels,block,stride=1):
         blocks = [block(self.in_channel,channels,stride)]
-        for i in range(1,depth):
+        for _ in range(1,depth):
             blocks.append(block(channels*block.multiple,channels))
         self.in_channel = channels*block.multiple
         self.channels.insert(0,self.in_channel)

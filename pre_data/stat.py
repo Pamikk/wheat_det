@@ -74,12 +74,12 @@ def cal_ratios(data):
         h,w = gts[img]['size']
         t = max(h,w)
         for bbox in gts[img]["bbox"]:
-           h = bbox[3]/t
-           w = bbox[2]/t
+           h = bbox[3]
+           w = bbox[2]
            mh = max(h,mh)
            mw = max(w,mw)
            ratios.append((w,h))
-    km = kmeans(ratios,k=4)
+    km = kmeans(ratios,k=6)
     km.initialization()
     _ = km.iter(0)
     print(mh,mw)
@@ -109,12 +109,12 @@ def analyze_hw(annos):
         t = max(w,h)
         for bbox in annos[name]['bbox']:
             _,_,bw,bh = bbox            
-            allb.append((bw/t,bh/t))
+            allb.append((bw,bh))
             mh = min(mh,bh)
             mxh = max(mxh,bh)
             mw = min(mw,bw)
             mxw = max(mxw,bw)
-    km = kmeans(allb,k=5,max_iters=500)
+    km = kmeans(allb,k=6,max_iters=500)
     km.initialization()
     km.iter(0)  
     print(mh,mw,mxh,mxw)
@@ -173,3 +173,6 @@ analyze_hw(train)
 #[0.060309932827680185, 0.043605377293796585] 35408
 #[0.059888260849536704, 0.07869134364105129] 42738
 #[0.09009376823524509, 0.11350195752099658] 23992
+anchors =[[53.87225938102254, 44.48974039224577], [63.62329042081948, 76.3607212070875], 
+          [98.12110508830222, 53.52514425598883],  [81.62511337056661, 118.2413193947205],
+        [125.43391003460205, 84.6516435986159], [158.20213028712567, 156.73488731089842]]
