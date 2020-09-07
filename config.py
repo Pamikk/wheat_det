@@ -46,7 +46,7 @@ class Config:
         self.multiscale = 3
         self.sizes = list(range(self.size-32*self.multiscale,self.size+1,32)) 
         self.nms_threshold = 0.5
-        self.dc_threshold = 0.4
+        self.dc_threshold = 0.5
         
         
         #loss args
@@ -82,7 +82,7 @@ class Config:
             self.obj_scale = 0.5
             self.noobj_scale = 1
             self.ignore_threshold = 0.7
-            self.match_threshold = 0.02#regard as match above this threshold
+            self.match_threshold = 0#regard as match above this threshold
 
         elif mode=='val':
             self.file = './data/val.json'
