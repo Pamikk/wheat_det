@@ -108,8 +108,8 @@ class YOLOLoss(nn.Module):
         grid_x,grid_y = make_grid_mesh_xy(self.grid_size,self.device)
         xs = torch.sigmoid(pred[...,0])#dxs
         ys = torch.sigmoid(pred[...,1])#dys
-        ws = torch.pow(pred[...,2],2)
-        hs = torch.pow(pred[...,3],2)
+        ws = pred[...,2]
+        hs = pred[...,3]
         conf = torch.sigmoid(pred[...,4])#Object score
         #grid,anchors
         
@@ -117,8 +117,8 @@ class YOLOLoss(nn.Module):
         pd_bboxes = torch.zeros_like(pred[...,:4],dtype=torch.float,device=self.device)
         pd_bboxes[...,0] = xs + grid_x
         pd_bboxes[...,1] = ys + grid_y
-        pd_bboxes[...,2] = ws*self.anchors_w
-        pd_bboxes[...,3] = hs*self.anchors_h
+        pd_bboxes[...,2] = torch.exp(ws)*self.anchors_w
+        pd_bboxes[...,3] = torch.exp(hs)*self.anchors_h
         nb = pred.shape[0]        
         if infer:
             pd_bboxes[...,[0,2]]/=self.grid_size[1]
@@ -182,7 +182,7 @@ class YOLOLoss(nn.Module):
         pds_bbox,pds_obj = pds
         loss_obj,res = self.cal_obj_loss(pds_obj,tobj,obj_mask,{})                     
         if obj_mask.float().max()==1:
-            loss_reg,res = self.cal_bbox_loss(pds_bbox,tbboxes,obj_mask,{})
+            loss_reg,res = self.cal_bbox_loss(pds_bbox,tbboxes,obj_mask,res)
             total = loss_reg+loss_obj
         else:
             total = loss_obj
