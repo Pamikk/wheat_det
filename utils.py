@@ -241,11 +241,12 @@ def cal_tp_per_item(pds,gts,threshold=0.5):
     pds = pds.cpu().numpy()
     gts = gts.cpu().numpy()
     n = pds.shape[0]
+    m = gts.shape[0]
     tps = np.zeros(n)
     scores = pds[:,-1]
     pdbboxes = pds[:,:4].reshape(-1,4)
     gtbboxes = gts.reshape(-1,4)
-    selected = np.zeros(gts.shape[0])
+    selected = np.zeros(m)
     for i in range(n):
         pdbbox = pdbboxes[i]
         ious = iou_wt_center_np(pdbbox,gtbboxes)
@@ -254,8 +255,10 @@ def cal_tp_per_item(pds,gts,threshold=0.5):
         if iou >=threshold  and selected[best] !=1:
             selected[best] = 1
             tps[i] = 1.0
-            mc -=1        
-    return [tps,scores,pds[:,-1]]
+            m -=1
+        if m==0:
+            break        
+    return [tps,scores]
     
 def xyhw2xy(boxes_):
     boxes = boxes_.clone()

@@ -251,7 +251,7 @@ class Trainer:
         metrics = {}
         for th in batch_metrics:
             tps,scores = [np.concatenate(x, 0) for x in list(zip(*batch_metrics[th]))]
-            precision, recall, AP,_ = ap_per_class(tps, scores, ngt)
+            precision, recall, AP = ap_per_class(tps, scores, ngt)
             mAP += AP
             if th in plot:
                 metrics['AP/'+str(th)] = AP
