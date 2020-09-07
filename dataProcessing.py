@@ -26,15 +26,15 @@ def stack_list(lists):
         res[k] = torch.stack([obj[k] for obj in lists])
     return res
 
-def brightness_scale(src,vs):
+def valid_scale(src,vs):
     img = cv2.cvtColor(src,cv2.COLOR_RGB2HSV).astype(np.float)
     img[:,:,2] *= (1+vs)
     img[:,:,2][img[:,:,2]>255] = 255
     img = cv2.cvtColor(img.astype(np.int8),cv2.COLOR_HSV2RGB).astype(np.float)
     return img
 def resize(src,tsize):
-    dst = cv2.resize(src.astype(np.uint8),(tsize[1],tsize[0]),interpolation=cv2.INTER_LINEAR)
-    return dst.astype(np.float)    
+    dst = cv2.resize(src,(tsize[1],tsize[0]),interpolation=cv2.INTER_LINEAR)
+    return dst    
 def rotate(src,ang,labels):
     h,w,_ = src.shape
     center =(w/2,h/2)
@@ -64,7 +64,7 @@ def color_normalize(img,mean):
     img -= np.array(mean)/255
     return img
 
-class WheatDet(data.Dataset):
+class VOC_dataset(data.Dataset):
     def __init__(self,cfg,mode='train'):
         self.img_path = cfg.img_path
         self.cfg = cfg
@@ -72,29 +72,30 @@ class WheatDet(data.Dataset):
         self.imgs = list(data.keys())
         self.annos = data
         self.mode = mode
+        self.accm_batch = 0
+        self.size = random.choice(cfg.sizes)
     def __len__(self):
         return len(self.imgs)
 
     def img_to_tensor(self,img):
         data = torch.tensor(np.transpose(img,[2,0,1]),dtype=torch.float)
         if data.max()>1:
-            data /= 255.0
+             data /= 255.0
         return data
     def gen_gts(self,anno):
         gts = torch.zeros((anno['obj_num'],4),dtype=torch.float)
         if anno['obj_num'] == 0:
             return gts
-        bboxs = anno['bbox']
-        for i in range(anno['obj_num']):
-            x1,y1,w,h = bboxs[i]
-            gts[i] =torch.tensor([x1+w/2,y1+h/2,w,h],dtype=torch.float)
+        labels = torch.tensor(anno['labels']) #ignore hard
+        assert labels.shape[-1] == 4
+        gts[:] =  labels
         return gts
         
     def normalize_gts(self,labels,size):
         #transfer
         if len(labels)== 0:
             return labels
-        labels/=size 
+        labels[:,1:]/=size 
         return labels
 
     def pad_to_square(self,img):
@@ -110,42 +111,48 @@ class WheatDet(data.Dataset):
         name = self.imgs[idx]
         anno = self.annos[name]
         img = cv2.imread(os.path.join(self.img_path,name+'.jpg'))
+        ##print(img.shape)
         img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+        h,w = img.shape[:2]
         img,pad = self.pad_to_square(img)
-        h = img.shape[0]
+        size = img.shape[0]
         labels = self.gen_gts(anno)
         if self.mode=='train':
             labels[:,1]+=pad[1]
             labels[:,2]+=pad[0]
-            if random.randint(0,1)==1:
+            if (random.randint(0,1)==1) and self.cfg.flip:
                 img,labels = flip(img,labels)
-            labels = self.normalize_gts(labels,h)
-            return img,labels      
+            data = self.img_to_tensor(img)
+            labels = self.normalize_gts(labels,size)
+            return data,labels      
         else:
             #validation set
-            info ={'size':h,'img_id':name,'pad':pad}
+            img = resize(img,(self.cfg.size,self.cfg.size))
+            data = self.img_to_tensor(img)
+            info ={'size':(h,w),'img_id':name,'pad':pad}
             if self.mode=='val':
-                return img,labels,info
+                return data,labels,info
             else:
-                return img,info
+                return data,info
     def collate_fn(self,batch):
-        tsize = (1024,1024)
         if self.mode=='test':
             data,info = list(zip(*batch))
-            data = torch.stack([self.img_to_tensor(resize(img,tsize)) for img in data])
+            data = torch.stack(data)
             info = stack_dicts(info)
             return data,info 
         elif self.mode=='val':
             data,labels,info = list(zip(*batch))
             info = stack_dicts(info)
-            data = torch.stack([self.img_to_tensor(resize(img,tsize)) for img in data])
+            data = torch.stack(data)
         elif self.mode=='train':
             data,labels = list(zip(*batch))
-            #ratio = random.choice(ratios)
-            scale = random.choices(self.cfg.sizes,self.cfg.sizes_w)[0]
-            tsize = (scale,scale)
-            data = torch.stack([self.img_to_tensor(resize(img,tsize)) for img in data]) #multi-scale-training   
-        tmp =[]                  
+            if self.accm_batch % 5 == 0:
+                self.size = random.choice(self.cfg.sizes)
+            tsize = (self.size,self.size)
+            self.accm_batch += 1
+            data = torch.stack([F.interpolate(img.unsqueeze(0),tsize,mode='bilinear').squeeze(0) for img in data]) #multi-scale-training   
+        tmp =[]
+                   
                 
         for i,bboxes in enumerate(labels):
             if len(bboxes)>0:
@@ -156,6 +163,9 @@ class WheatDet(data.Dataset):
         if len(tmp)>0:
             labels = torch.cat(tmp,dim=0)
             labels = labels.reshape(-1,5)
+            area = labels[:,3]*labels[:,4]
+            idx = torch.argsort(area,descending=True)
+            labels = labels[idx,:].reshape(-1,5)
         else:
             labels = torch.tensor(tmp,dtype=torch.float).reshape(-1,5)
         if self.mode=='train':

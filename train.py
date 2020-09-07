@@ -5,11 +5,12 @@ import torch
 from torch.utils.data import DataLoader
 ###files
 from config import Config as cfg
-from dataProcessing import WheatDet as dataset
+from dataProcessing import VOC_dataset as dataset
 from models.network import NetAPI
 from trainer import Trainer
 import warnings
 from loss_funcs import LossAPI
+from config import cal_anchors
 
 warnings.filterwarnings('ignore')
 def main(args,cfgs):
@@ -31,16 +32,19 @@ def main(args,cfgs):
     config.device = torch.device("cuda")
     torch.cuda.empty_cache()
     #network
+    if args.anchors:
+        print('calculating new anchors')
+        config.anchors,_ = cal_anchors(config.sizes)
     network = NetAPI(config,args.net)
     loss = LossAPI(config,args.loss)
     torch.cuda.empty_cache()
     det = Trainer(config,datasets,network,loss,(args.resume,args.epochs))
-    if args.val=='val':
-        metrics = det.validate(det.start-1,mode='val')        
-        det.logger.write_metrics(det.start-1,metrics,[])
+    if args.mode=='val':
+        #metrics = det.validate(det.start-1,mode='val')        
+        #det.logger.write_metrics(det.start-1,metrics,[])
         metrics = det.validate(det.start-1,mode='train')
         det.logger.write_metrics(det.start-1,metrics,[],mode='Trainval')
-    elif args.val=='test':
+    elif args.mode=='test':
         det.test()
     else:
         det.train()
@@ -50,10 +54,11 @@ if __name__ == "__main__":
     parser.add_argument("--resume", type=int, default=0, help="start from epoch?")
     parser.add_argument("--exp",type=str,default='exp',help="name of exp")
     parser.add_argument("--res",type=int,default=50,help="resnet depth")
-    parser.add_argument("--val",type=str,default='train',help="only validation")
-    parser.add_argument("--loss",type=str,default='yolov3',help="loss type:yolov3|yolov3_iou|yolov3_gou|yolov3_com")
+    parser.add_argument("--mode",type=str,default='train',help="only validation")
+    parser.add_argument("--loss",type=str,default='yolo',help="loss type")
     parser.add_argument("--net",type=str,default='yolo',help="network type:yolo")
     parser.add_argument("--bs",type=int,default=16,help="batchsize")
+    parser.add_argument("--anchors",action='store_true')
     args = parser.parse_args()
     cfgs = {}
     cfgs['train'] = cfg()

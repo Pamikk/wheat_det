@@ -6,13 +6,15 @@ import os
 from .backbone import ResNet,conv1x1,conv3x3,Darknet 
 def init_weights(m):
     if type(m) == nn.Conv2d:
-        torch.nn.init.kaiming_uniform_(m.weight)
-        if type(m.bias)==type(m.weight):
-            torch.nn.init.constant_(m.bias,0.01)
-def NetAPI(cfg,net):
+        torch.nn.init.kaiming_normal_(m.weight.data)
+    elif type(m) == nn.BatchNorm2d:
+        torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
+        torch.nn.init.constant_(m.bias.data, 0.0)
+def NetAPI(cfg,net,init=True):
     networks = {'yolo':YOLO,'yolo_spp':YOLO_SPP}
     network = networks[net](cfg)
-    network.apply(init_weights)
+    if init:
+        network.initialization()
     return network
 
 class NonResidual(nn.Module):
@@ -39,7 +41,7 @@ class YOLO(nn.Module):
     def __init__(self,cfg):
         super(YOLO,self).__init__()
         self.encoders = Darknet(os.path.join(cfg.pre_trained_path,'yolov3.weights'))
-        self.out_channels = self.encoders.out_channels
+        self.out_channels = self.encoders.out_channels.copy()
         self.in_channel = self.out_channels.pop(0)
         self.relu = nn.LeakyReLU(0.1)
         decoders = []
@@ -48,11 +50,16 @@ class YOLO(nn.Module):
             decoder = self.make_prediction(len(ind)*(cfg.cls_num+5),NonResidual,channels[i],upsample=i!=0)
             decoders.append(decoder)
         self.decoders = nn.ModuleList(decoders)
+    def initialization(self):
+        for m in self.modules():
+            init_weights(m)
+        self.encoders.load_dark_net()
     def make_prediction(self,out_channel,block,channel,upsample=True):
         if upsample:
             upsample = nn.Sequential(conv1x1(self.in_channel,channel),nn.BatchNorm2d(channel),
                                            self.relu,nn.Upsample(scale_factor=2,mode='bilinear'))
-            self.in_channel = channel + self.out_channels.pop(0)
+            cat_channel = self.out_channels.pop(0)
+            self.in_channel = channel + cat_channel
         else:
             upsample = nn.Identity()
         decoders=[block(self.in_channel,channel),block(channel*block.multiple,channel)]
@@ -65,22 +72,21 @@ class YOLO(nn.Module):
         feats = self.encoders(x)
         #channels:[1024,512,256,128,64]
         #spatial :[8,16,32,64,128] suppose inp is 256
-        outs = []
+        outs = list(range(len(self.decoders)))
         x = feats.pop(0)
         y = []
-        for decoders in self.decoders:
+        for i,decoders in enumerate(self.decoders):
             up,decoder,pred = decoders
             x = torch.cat([up(x)]+y,dim=1)
             x = decoder(x)
             out = pred(x)
-            outs.append(out)
+            outs[i] = out
             y = [feats.pop(0)]
         return outs
 class YOLO_SPP(YOLO):
     def __init__(self,cfg):
         super(YOLO_SPP,self).__init__(cfg)
-        self.encoders = Darknet(os.path.join(cfg.pre_trained_path,'yolov3-spp.weights'))
-        self.out_channels = self.encoders.out_channels
+        self.out_channels = self.encoders.out_channels.copy()
         self.in_channel = self.out_channels.pop(0)
         self.relu = nn.LeakyReLU(0.1)
         decoders = []

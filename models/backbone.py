@@ -29,7 +29,7 @@ class BasicBlock(nn.Module):
     def __init__(self,in_channels,channels,stride=1):
         super(BasicBlock,self).__init__()
         self.conv1 = conv3x3(in_channels,channels)
-        self.relu = nn.LeakyReLU(0.01)
+        self.relu = nn.LeakyReLU(0.1)
         self.bn1 = nn.BatchNorm2d(channels)
         self.conv2 = conv3x3(channels,channels,stride)
         if in_channels != channels or stride!=1:
@@ -131,8 +131,6 @@ class Darknet(nn.Module):
             encoders.append(self.make_encoders(self.channels[i],BaseBlock,depth=self.depths[i],downsample=True))
         self.encoders = nn.ModuleList(encoders)
         self.path = path
-        if os.path.exists(self.path):
-            self.load_dark_net()
     def make_encoders(self,channel,block,depth=1,downsample=False):
         blocks = []
         if downsample:
@@ -148,9 +146,12 @@ class Darknet(nn.Module):
 
     def forward(self,x):
         #suppose x has shape: 3,256,256
+               
         x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
+        x = self.bn1(x) 
+        x = self.relu(x)       
+        
+        
         #32,256,256
 
         feats = [x]

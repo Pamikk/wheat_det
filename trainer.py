@@ -9,10 +9,12 @@ import os
 import json
 
 from utils import Logger
-from utils import cal_metrics as cal_metrics
 from utils import non_maximum_supression as nms
-tosave=['mAP']
-thresholds = [0.5,0.75]
+from utils import cal_tp_per_item,ap_per_class
+tosave = ['mAP']
+plot = [0.5,0.75] 
+thresholds = np.around(np.arange(0.5,0.96,0.05),2)
+
 class Trainer:
     def __init__(self,cfg,datasets,net,loss,epoch):
         self.cfg = cfg
@@ -31,8 +33,8 @@ class Trainer:
         self.checkpoints = os.path.join(cfg.checkpoint,name)
         self.device = cfg.device
         self.net = self.net
-        self.optimizer = optim.SGD(self.net.parameters(),lr=cfg.lr,momentum=cfg.momentum,weight_decay=cfg.weight_decay)
-        self.lr_sheudler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,mode='min', factor=cfg.lr_factor, threshold=0.0001,patience=4,min_lr=cfg.min_lr)
+        self.optimizer = optim.Adam(self.net.parameters(),lr=cfg.lr,weight_decay=cfg.weight_decay)
+        self.lr_sheudler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,mode='min', factor=cfg.lr_factor, threshold=0.0001,patience=cfg.patience,min_lr=cfg.min_lr)
         if not(os.path.exists(self.checkpoints)):
             os.mkdir(self.checkpoints)
         self.predictions = os.path.join(self.checkpoints,'pred')
@@ -48,7 +50,7 @@ class Trainer:
         self.logger = Logger(log_dir)
         torch.cuda.empty_cache()
         self.save_every_k_epoch = cfg.save_every_k_epoch #-1 for not save and validate
-        self.val_every_k_epoch = 5
+        self.val_every_k_epoch = cfg.val_every_k_epoch
         self.upadte_grad_every_k_batch = 1
 
         self.best_mAP = 0
@@ -62,15 +64,28 @@ class Trainer:
         self.nms_threshold = cfg.nms_threshold
         self.conf_threshold = cfg.dc_threshold
         self.save_pred = False
-        self.adjust_lr = False
+        self.adjust_lr = cfg.adjust_lr
         #load from epoch if required
         if start>0:
             self.load_epoch(str(start))
         if start==-1:
-            self.load_epoch('best')
+            self.load_last_epoch()
         if start==-2:
-            self.load_epoch('bestm')#best moving
+            self.load_epoch('best')#best moving
         self.net = self.net.to(self.device)
+    def load_last_epoch(self):
+        files = os.listdir(self.checkpoints)
+        idx = 0
+        for name in files:
+            if name[-3:]=='.pt':
+                epoch = name[6:-3]
+                if epoch=='best' or epoch=='bestm':
+                  continue
+                idx = max(idx,int(epoch))
+        if idx==0:
+            exit()
+        else:
+            self.load_epoch(str(idx))
     def save_epoch(self,idx,epoch):
         saveDict = {'net':self.net.state_dict(),
                     'optimizer': self.optimizer.state_dict(),
@@ -123,6 +138,7 @@ class Trainer:
         running_loss ={'xy':0.0,'wh':0.0,'conf':0.0,'cls':0.0,'obj':0.0,'all':0.0,'iou':0.0,'gou':0.0}
         self.net.train()
         n = len(self.trainset)
+        self.loss.not_match = 0
         for i,data in tqdm(enumerate(self.trainset)):
             inputs,labels = data
             outs = self.net(inputs.to(self.device).float())
@@ -135,13 +151,15 @@ class Trainer:
                     running_loss[k] += display[k]/n
             loss.backward()
             #solve gradient explosion problem caused by large learning rate or small batch size
-            #nn.utils.clip_grad_value_(self.net.parameters(), clip_value=2) 
+            #nn.utils.clip_grad_value_(self.net.parameters(), clip_value=2.0) 
             nn.utils.clip_grad_norm_(self.net.parameters(),max_norm=2.0)
             if i == n-1 or (i+1) % self.upadte_grad_every_k_batch == 0:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
             del loss
         self.logMemoryUsage()
+        print(f'#Gt not matched:{self.loss.not_match}')
+        self.loss.reset_notmatch()
         return running_loss
     def train(self):
         print("strat train:",self.name)
@@ -150,15 +168,18 @@ class Trainer:
         self.optimizer.zero_grad()
         print(self.optimizer.param_groups[0]['lr'])
         epoch = self.start
-        
+        stop_epochs = 0
         #torch.autograd.set_detect_anomaly(True)
-        while epoch < self.total:
+        while epoch < self.total and stop_epochs<self.early_stop_epochs:
             running_loss = self.train_one_epoch()            
             lr = self.optimizer.param_groups[0]['lr']
             self.logger.write_loss(epoch,running_loss,lr)
             #step lr
             self.lr_sheudler.step(running_loss['all'])
             lr_ = self.optimizer.param_groups[0]['lr']
+            if lr_ == self.cfg.min_lr:
+                print(lr_-self.cfg.min_lr)
+                stop_epochs +=1
             if lr_ != lr:
                 self.save_epoch(str(epoch),epoch)
             if (epoch+1)%self.save_every_k_epoch==0:
@@ -167,15 +188,16 @@ class Trainer:
                 metrics = self.validate(epoch,'val',self.save_pred)
                 self.logger.write_metrics(epoch,metrics,tosave)
                 mAP = metrics['mAP']
-                self._updateMetrics(mAP,epoch)
                 if mAP >= self.best_mAP:
                     self.best_mAP = mAP
                     self.best_mAP_epoch = epoch
                     self.save_epoch('best',epoch)
-                print("best so far with:",self.best_mAP)
+                print(f"best so far with {self.best_mAP} at epoch:{self.best_mAP_epoch}")
                 if self.trainval:
                     metrics = self.validate(epoch,'train',self.save_pred)
                     self.logger.write_metrics(epoch,metrics,tosave,mode='Trainval')
+                    mAP = metrics['mAP']
+                    self._updateMetrics(mAP,epoch)
             epoch +=1
                 
         print("Best mAP: {:.4f} at epoch {}".format(self.best_mAP, self.best_mAP_epoch))
@@ -189,49 +211,53 @@ class Trainer:
         else:
             valset = self.trainval
         with torch.no_grad():
-            APs = dict.fromkeys(thresholds,0)
-            precisions = dict.fromkeys(thresholds,0)
-            recalls = dict.fromkeys(thresholds,0)
             mAP = 0
             count = 0
+            batch_metrics={}
+            for th in thresholds:
+                batch_metrics[th] = []
+            ngt=0
             for _,data in tqdm(enumerate(valset)):
                 inputs,labels,info = data
                 outs = self.net(inputs.to(self.device).float())
                 size = inputs.shape[-2:]
-                pds = self.loss(outs,size,infer=True)
+                pds = self.loss(outs,size=size,infer=True)
                 nB = pds.shape[0]
+                ngt += labels.shape[0]              
                 for b in range(nB):
                     pred = pds[b].view(-1,self.cfg.cls_num+5)
-                    gts = labels[labels[:,0]==b,1:]
-                    name = info['img_id'][b]
-                    size = info['size'][b]
-                    pad = info['pad'][b]
-                    pred[:,:4]*=size
-                    pred[:,0] -= pad[1]
-                    pred[:,1] -= pad[0]
                     if save:
                         pds_ = list(pred.cpu().numpy().astype(float))
                         pds_ = [list(pd) for pd in pds_]
-                        res[name] = pds_
+                        result = [pds_,pad]
+                        res[name] = result
                     pred_nms = nms(pred,self.conf_threshold, self.nms_threshold)
+                    ##if pred_nms.shape[0]>0:
+                      ## print(pred_nms[0])
+                    name = info['img_id'][b]
+                    size = info['size'][b]
+                    pad = info['pad'][b]
+                    ##print(name)
+                    ##print(pad)
+                    gt = labels[labels[:,0]==b,1:].reshape(-1,4)                   
+                    pred_nms[:,:4]*=max(size)
+                    pred_nms[:,0] -= pad[1]
+                    pred_nms[:,1] -= pad[0]
+                    ##if pred_nms.shape[0]>0:
+                      ## print(pred_nms[0])
                     count+=1
-                    total = 0
-                    for th in thresholds:
-                        p,r,ap = cal_metrics(pred_nms,gts,threshold= th)
-                        APs[th] += ap
-                        precisions[th] += p
-                        recalls[th] += r
-                        total +=ap
-                    mAP += 1.0*total/len(thresholds)
+                    for th in batch_metrics:
+                        batch_metrics[th].append(cal_tp_per_item(pred_nms,gt,th))
         metrics = {}
-        for th in thresholds:
-            metrics['AP/'+str(th)] = 1.0*APs[th]/count
-            metrics['Precision/'+str(th)] = 1.0*precisions[th]/count
-            metrics['Recall/'+str(th)] = 1.0*recalls[th]/count
-        mAP = 1.0*mAP/count
-        metrics['mAP'] = mAP
-        
-        
+        for th in batch_metrics:
+            tps,scores = [np.concatenate(x, 0) for x in list(zip(*batch_metrics[th]))]
+            precision, recall, AP,_ = ap_per_class(tps, scores, ngt)
+            mAP += AP
+            if th in plot:
+                metrics['AP/'+str(th)] = AP
+                metrics['Precision/'+str(th)] = precision
+                metrics['Recall/'+str(th)] = recall
+        metrics['mAP'] = mAP/len(thresholds)
         if save:
             json.dump(res,open(os.path.join(self.predictions,'pred_epoch_'+str(epoch)+'.json'),'w'))
         
@@ -244,17 +270,18 @@ class Trainer:
                 inputs,info = data
                 outs = self.net(inputs.to(self.device).float())
                 size = inputs.shape[-2:]
-                pds = self.loss(outs,size,infer=True)
+                pds = self.loss(outs,size=size,infer=True)
                 nB = pds.shape[0]
                 for b in range(nB):
                     pred = pds[b].view(-1,self.cfg.cls_num+5)
                     name = info['img_id'][b]
-                    size = info['size'][b]
+                    tsize = info['size'][b]
                     pad = info['pad'][b]
-                    pred[:,:4]*=size
+                    pred[:,:4]*=max(tsize)
                     pred[:,0] -= pad[1]
-                    pred[:,1] -= pad[0]                    
-                    pred_nms = nms(pred,self.conf_threshold, self.nms_threshold)
+                    pred[:,1] -= pad[0]
+                    pred_nms = pred               
+                    #pred_nms = nms(pred,self.conf_threshold, self.nms_threshold)
                     pds_ = list(pred_nms.cpu().numpy().astype(float))
                     pds_ = [list(pd) for pd in pds_]
                     res[name] = pds_
