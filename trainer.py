@@ -13,7 +13,7 @@ from utils import non_maximum_supression as nms
 from utils import cal_tp_per_item,ap_per_class
 tosave = ['mAP']
 plot = [0.5,0.75] 
-thresholds = np.around(np.arange(0.5,0.96,0.05),2)
+thresholds = np.around(np.arange(0.5,0.76,0.05),2)
 
 class Trainer:
     def __init__(self,cfg,datasets,net,loss,epoch):
@@ -192,13 +192,14 @@ class Trainer:
                     self.best_mAP = mAP
                     self.best_mAP_epoch = epoch
                     self.save_epoch('best',epoch)
-                print(f"best so far with {self.best_mAP} at epoch:{self.best_mAP_epoch}")
+                
                 if self.trainval:
                     metrics = self.validate(epoch,'train',self.save_pred)
                     self.logger.write_metrics(epoch,metrics,tosave,mode='Trainval')
                     mAP = metrics['mAP']
                     self._updateMetrics(mAP,epoch)
             epoch +=1
+            print(f"best so far with {self.best_mAP} at epoch:{self.best_mAP_epoch}")
                 
         print("Best mAP: {:.4f} at epoch {}".format(self.best_mAP, self.best_mAP_epoch))
         self.save_epoch(str(epoch-1),epoch-1)
