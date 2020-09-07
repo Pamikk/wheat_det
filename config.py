@@ -6,7 +6,7 @@ import json
 from stats import kmeans
 anchors =[[20.775, 19.732], [27.184, 22.13], [35.381, 32.168], [39.331, 36.391], [44.967, 39.826], [50.667, 46.979], [59.47, 53.225], [74.047, 72.927], [88.779, 95.09]]
 #anchors = 
-path =f'data/annotation.json' #annotation path for anchor calculation
+path ='data/train.json' #annotation path for anchor calculation
 def cal_anchors(sizes=None,num=9):
     #As in https://github.com/eriklindernoren/PyTorch-YOLOv3
     # randomly scale as sizes if sizes is not None    
@@ -25,7 +25,7 @@ def cal_anchors(sizes=None,num=9):
             if sizes == None:
                 scale = t
             else:
-                scale = random.choice(sizes)
+                scale = sizes
             allb.append((bw/t*scale,bh/t*scale))
     km = kmeans(allb,k=num,max_iters=1000)
     km.initialization()

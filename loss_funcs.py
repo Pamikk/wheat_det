@@ -71,7 +71,7 @@ class YOLOLoss(nn.Module):
             return obj_mask,noobj_mask,tbboxes,obj_mask.float()
         #convert target
         idx = torch.argsort(gts[:,-1],descending=True)#sort as match num,then gt has not matched will be matched first
-        gt_boxes = gts[idx,2:6]*nH
+        gt_boxes = gts[idx,1:5]*nH
         gws = gt_boxes[:,2]
         ghs = gt_boxes[:,3]
 

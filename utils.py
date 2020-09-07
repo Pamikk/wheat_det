@@ -242,33 +242,19 @@ def cal_tp_per_item(pds,gts,threshold=0.5):
     gts = gts.cpu().numpy()
     n = pds.shape[0]
     tps = np.zeros(n)
-    labels = np.unique(gts[:,0].astype(np.int))
-    scores = pds[:,4]*pds[:,5]
-    ##print(len(labels))
-    for c in labels:
-        pd_idx = np.where(pds[:-1]==c)[0]
-        pdbboxes = pds[pd_idx,:4].reshape(-1,4)
-        gtbboxes = gts[gts[:,0] == c,1:].reshape(-1,4)
-        ##print(voc_indices[int(c)])
-        ##print(pdbboxes)
-        ##print(gtbboxes)
-        nc = pdbboxes.shape[0]
-        mc = gtbboxes.shape[0]
-        selected = np.zeros(mc)
-        sel_ious = np.zeros(mc)
-        for i in range(nc):
-            if mc == 0:
-                break
-            pdbbox = pdbboxes[i]
-            ious = iou_wt_center_np(pdbbox,gtbboxes)
-            iou = ious.max()
-            best = ious.argmax()
-            ##print(iou)
-            if iou >=threshold  and selected[best] !=1:
-                selected[best] = 1
-                tps[pd_idx[i]] = 1.0
-                mc -=1
-                sel_ious[best] = iou           
+    scores = pds[:,-1]
+    pdbboxes = pds[:,:4].reshape(-1,4)
+    gtbboxes = gts.reshape(-1,4)
+    selected = np.zeros(gts.shape[0])
+    for i in range(n):
+        pdbbox = pdbboxes[i]
+        ious = iou_wt_center_np(pdbbox,gtbboxes)
+        iou = ious.max()
+        best = ious.argmax()
+        if iou >=threshold  and selected[best] !=1:
+            selected[best] = 1
+            tps[i] = 1.0
+            mc -=1        
     return [tps,scores,pds[:,-1]]
     
 def xyhw2xy(boxes_):
