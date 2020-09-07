@@ -47,15 +47,15 @@ def rotate(src,ang,labels):
     sin = abs(mat[0,1])
     pts = np.stack([xs,ys,np.ones([n])],axis=1).T
     tpts = torch.tensor(np.dot(mat,pts).T,dtype=torch.float)
-    labels_[:,1] = tpts[:,0]
-    labels_[:,2] = tpts[:,1]
-    labels_[:,3] = (cos*ws + sin*hs)
-    labels_[:,4] = (cos*hs + sin*ws)
+    labels_[:,0] = tpts[:,0]
+    labels_[:,1] = tpts[:,1]
+    labels_[:,2] = (cos*ws + sin*hs)
+    labels_[:,3] = (cos*hs + sin*ws)
     return dst,labels_
 def flip(src,labels):
     w = src.shape[1]
     dst = cv2.flip(src,1)
-    labels[:,1] = w-1-labels[:,1]
+    labels[:,0] = w-1-labels[:,0]
     return dst,labels
 def color_normalize(img,mean):
     img = img.astype(np.float)
@@ -95,7 +95,7 @@ class VOC_dataset(data.Dataset):
         #transfer
         if len(labels)== 0:
             return labels
-        labels[:,1:]/=size 
+        labels/=size 
         return labels
 
     def pad_to_square(self,img):
