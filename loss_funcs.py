@@ -56,7 +56,6 @@ class YOLOLoss(nn.Module):
         self.num_anchors = len(anchors)
         self.anchors = np.array(anchors).reshape(-1,2)
         self.channel_num = self.num_anchors*(self.cls_num+5)
-        self.match_threshold = cfg.match_threshold
     def build_target(self,pds,gts):
         self.device ='cuda' if pds.is_cuda else 'cpu'
         nB,nA,nH,nW,_ = pds.shape
