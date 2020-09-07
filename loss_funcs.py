@@ -56,6 +56,7 @@ class YOLOLoss(nn.Module):
         self.num_anchors = len(anchors)
         self.anchors = np.array(anchors).reshape(-1,2)
         self.channel_num = self.num_anchors*(self.cls_num+5)
+        self.match_threshold = cfg.match_threshold
     def build_target(self,pds,gts):
         self.device ='cuda' if pds.is_cuda else 'cpu'
         nB,nA,nH,nW,_ = pds.shape
@@ -68,19 +69,24 @@ class YOLOLoss(nn.Module):
         if nGts==0:
             return obj_mask,noobj_mask,tbboxes,obj_mask.float()
         #convert target
-        idx = torch.argsort(gts[:,-1],descending=True)#sort as match num,then gt has not matched will be matched first
-        gt_boxes = gts[idx,1:5]*nH
+        gt_boxes = gts[:,1:5]*nH
         gws = gt_boxes[:,2]
         ghs = gt_boxes[:,3]
 
         ious = torch.stack([iou_wo_center(gws,ghs,w,h) for (w,h) in self.scaled_anchors])
         vals, best_n = ious.max(0)
-        ind = torch.argsort(vals)
+        ind = torch.argsort(vals) 
+        # bigger iou will cover the smaller one when assign to target
+        idx = torch.argsort(gts[ind,-1],descending=True)
+        #sort as match num
+        # gt has not been matched will be matched first
+        ind = ind[idx]
+        ind = ind[(vals[ind]>self.match_threshold)|(gts[ind,-1]==0)]
+        #discard the gts below the match threshold and has been matched
 
-        idx = idx[ind]
+
         best_n =best_n[ind]
-
-        batch = gts[idx,0].long()
+        batch = gts[ind,0].long()
         gxs,gys = gt_boxes[ind,0],gt_boxes[ind,1]
         gis,gjs = gxs.long(),gys.long()
         #calculate bbox ious with anchors      
@@ -88,8 +94,8 @@ class YOLOLoss(nn.Module):
         noobj_mask[batch,best_n,gjs,gis] = 0
         selected = torch.zeros_like(obj_mask,dtype=torch.long).fill_(-1)
         
-        tbboxes[batch,best_n,gjs,gis] = gt_boxes
-        selected[batch,best_n,gjs,gis] = idx
+        tbboxes[batch,best_n,gjs,gis] = gt_boxes[ind,:]
+        selected[batch,best_n,gjs,gis] = ind
         ious = ious.t()[ind]
         #ignore big overlap but not the best
         for i,iou in enumerate(ious):
