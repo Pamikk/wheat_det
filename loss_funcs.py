@@ -61,7 +61,6 @@ class YOLOLoss(nn.Module):
         self.device ='cuda' if pds.is_cuda else 'cpu'
         nB,nA,nH,nW,_ = pds.shape
         assert nH==nW
-        nC = self.cls_num
         #threshold = th
         nGts = len(gts)
         obj_mask = torch.zeros(nB,nA,nH,nW,dtype=torch.bool,device=self.device)
@@ -139,8 +138,8 @@ class YOLOLoss(nn.Module):
         loss_y = mse_loss(ys[obj_mask],tys[obj_mask]-tys[obj_mask].floor())
         loss_xy = loss_x + loss_y
 
-        loss_w = mse_loss(ws[obj_mask],tws[obj_mask])
-        loss_h = mse_loss(hs[obj_mask],ths[obj_mask])
+        loss_w = mse_loss(ws[obj_mask],torch.log(tws[obj_mask]+1e-16))
+        loss_h = mse_loss(hs[obj_mask],torch.log(ths[obj_mask]+1e-16))
         loss_wh = loss_w + loss_h
         res['wh']=loss_wh.item()
         res['xy']=loss_xy.item()
