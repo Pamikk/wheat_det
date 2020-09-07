@@ -82,7 +82,6 @@ class Config:
             self.obj_scale = 0.5
             self.noobj_scale = 1
             self.ignore_threshold = 0.7
-            self.match_threshold = 0#regard as match above this threshold
 
         elif mode=='val':
             self.file = './data/val.json'
