@@ -192,6 +192,7 @@ class Trainer:
                     self.best_mAP = mAP
                     self.best_mAP_epoch = epoch
                     self.save_epoch('best',epoch)
+                    self.save_epoch(str(epoch),epoch)#update best mAP
                 
                 if self.trainval:
                     metrics = self.validate(epoch,'train',self.save_pred)
