@@ -1,19 +1,13 @@
-# Object detection loss functions and non-maximum suppressions
+# Wheat Head Detection based on YOLOv3
 
-This repo will summarize and implement current loss functions and non-maximum suppression methods came up for object detection.
-
-All methods will be evaluated on VOC2007 with the same framework(currently YOLOv3).
+Currently this repo will summarize and implement current loss functions and non-maximum suppression methods came up for object detection(simalar to the other repo obj-det-loss,but the other repo did not achieve a good result), so I work on this repo first.
 
 Our goal is to analyze different tricks.
 
-Currently under training procedure, periodical conclusion will be soon updated.
 
-To do List
-
-+ [x] Mirgrate original model to VOC 2007
 + [x] Revise codes to be more readable and concise
 + [x] Loss_Funcs
-  + [ ] bbox loss
+  + [x] bbox loss
     + [x] Anchor-based Loss
       + [x] YOLOv3-based
         + [x] Regression Loss

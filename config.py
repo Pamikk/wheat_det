@@ -4,7 +4,7 @@ import random
 import json
 
 from stats import kmeans
-anchors =[[41.648, 39.394], [54.251, 44.091], [70.747, 63.988], [78.662, 72.634], [89.776, 79.641], [101.327, 93.368], [119.003, 106.429], [148.22, 145.115], [177.258, 190.276]]
+anchors =[[20.775, 19.732], [27.184, 22.13], [35.381, 32.168], [39.331, 36.391], [44.967, 39.826], [50.667, 46.979], [59.47, 53.225], [74.047, 72.927], [88.779, 95.09]]
 #anchors = 
 path =f'data/annotation.json' #annotation path for anchor calculation
 def cal_anchors(sizes=None,num=9):
@@ -44,7 +44,7 @@ class Config:
         self.res = 50
         self.size = 512
         self.multiscale = 3
-        self.sizes = list(range(self.size-32*self.multiscale,self.size+32*self.multiscale+1,32)) 
+        self.sizes = list(range(self.size-32*self.multiscale,self.size+1,32)) 
         self.nms_threshold = 0.5
         self.dc_threshold = 0.4
         
