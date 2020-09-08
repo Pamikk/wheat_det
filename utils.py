@@ -248,6 +248,8 @@ def cal_tp_per_item(pds,gts,threshold=0.5):
     gtbboxes = gts.reshape(-1,4)
     selected = np.zeros(m)
     for i in range(n):
+        if m==0:
+            break 
         pdbbox = pdbboxes[i]
         ious = iou_wt_center_np(pdbbox,gtbboxes)
         iou = ious.max()
@@ -256,8 +258,7 @@ def cal_tp_per_item(pds,gts,threshold=0.5):
             selected[best] = 1
             tps[i] = 1.0
             m -=1
-        if m==0:
-            break        
+               
     return [tps,scores]
     
 def xyhw2xy(boxes_):
