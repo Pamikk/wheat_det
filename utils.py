@@ -232,7 +232,7 @@ def ap_per_class(tp, conf,n_gt):
         return 0,0,0
     p = tp.sum()/n_p
     r = tp.sum()/n_gt
-    ap = tp/(n_gt+n_p-tp.sum())
+    ap = tp.sum()/(n_gt+n_p-tp.sum())
     return p,r,ap
 
 
