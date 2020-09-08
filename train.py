@@ -62,7 +62,7 @@ if __name__ == "__main__":
     parser.add_argument("--net",type=str,default='yolo',help="network type:yolo")
     parser.add_argument("--bs",type=int,default=16,help="batchsize")
     parser.add_argument("--anchors",action='store_true')
-    parser.add_argument("--lr",action='store_constant',type=float)
+    parser.add_argument("--lr",type=float,default=None)
     args = parser.parse_args()
     cfgs = {}
     cfgs['train'] = cfg()
