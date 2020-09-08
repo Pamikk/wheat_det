@@ -71,8 +71,8 @@ class Config:
             self.weight_decay=5e-4
             self.momentum = 0.9
             #lr_scheduler
-            self.min_lr = 5e-5
-            self.lr_factor = 0.25
+            self.min_lr = 1e-7
+            self.lr_factor = 0.2
             self.patience = 12
             #exp_setting
             self.save_every_k_epoch = 10

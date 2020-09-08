@@ -35,6 +35,9 @@ def main(args,cfgs):
     if args.anchors:
         print('calculating new anchors')
         config.anchors,_ = cal_anchors(config.sizes)
+    if args.lr:
+        config.lr = args.lr 
+        config.adjust_lr = True
     network = NetAPI(config,args.net)
     loss = LossAPI(config,args.loss)
     torch.cuda.empty_cache()
@@ -59,6 +62,7 @@ if __name__ == "__main__":
     parser.add_argument("--net",type=str,default='yolo',help="network type:yolo")
     parser.add_argument("--bs",type=int,default=16,help="batchsize")
     parser.add_argument("--anchors",action='store_true')
+    parser.add_argument("--lr",action='store_constant',type=float)
     args = parser.parse_args()
     cfgs = {}
     cfgs['train'] = cfg()
