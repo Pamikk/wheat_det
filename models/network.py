@@ -86,6 +86,7 @@ class YOLO(nn.Module):
 class YOLO_SPP(YOLO):
     def __init__(self,cfg):
         super(YOLO_SPP,self).__init__(cfg)
+        self.encoders = Darknet(os.path.join(cfg.pre_trained_path,'yolov3-spp.weights'))
         self.out_channels = self.encoders.out_channels.copy()
         self.in_channel = self.out_channels.pop(0)
         self.relu = nn.LeakyReLU(0.1)

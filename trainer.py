@@ -33,7 +33,7 @@ class Trainer:
         self.checkpoints = os.path.join(cfg.checkpoint,name)
         self.device = cfg.device
         self.net = self.net
-        self.optimizer = optim.Adam(self.net.parameters(),lr=cfg.lr,weight_decay=cfg.weight_decay)
+        self.optimizer = optim.SGD(self.net.parameters(),lr=cfg.lr,weight_decay=cfg.weight_decay,momentum=cfg.momentum)
         self.lr_sheudler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,mode='min', factor=cfg.lr_factor, threshold=0.0001,patience=cfg.patience,min_lr=cfg.min_lr)
         if not(os.path.exists(self.checkpoints)):
             os.mkdir(self.checkpoints)
@@ -198,7 +198,7 @@ class Trainer:
                     metrics = self.validate(epoch,'train',self.save_pred)
                     self.logger.write_metrics(epoch,metrics,tosave,mode='Trainval')
                     mAP = metrics['mAP']
-                    self._updateMetrics(mAP,epoch)
+            self._updateMetrics(running_loss['all'],epoch)        
             epoch +=1
             print(f"best so far with {self.best_mAP} at epoch:{self.best_mAP_epoch}")
                 
