@@ -47,6 +47,8 @@ def translate(src,labels):
         mx,my,mxx,mxy = get_croppable_part(labels)
         tx = random.uniform(-mx,w-mxx-1)
         ty = random.uniform(-my,h-mxy-1)
+        labels[:,ls] += tx
+        labels[:,ls+1] += ty
     else:
         tx = random.uniform(-w*0.2,w*0.2)
         ty = random.uniform(-h*0.2,h*0.2)
@@ -54,8 +56,7 @@ def translate(src,labels):
     mat = np.array([[1,0,tx],[0,1,ty]])
     dst = cv2.warpAffine(src,mat,(w,h))
 
-    labels[:,ls] += tx
-    labels[:,ls+1] += ty
+    
     return dst,labels
 def crop(src,labels):
     h,w,_ = src.shape
@@ -65,6 +66,8 @@ def crop(src,labels):
         tym = int(random.uniform(0,my))
         txmx = int(random.uniform(mxx,w+0.9))
         tymx = int(random.uniform(mxy,h+0.9))
+        labels[:,ls] -= txm
+        labels[:,ls+1] -= tym
     else:
         txm = int(random.uniform(0,w*0.2))
         tym = int(random.uniform(0,h*0.2))
@@ -72,27 +75,27 @@ def crop(src,labels):
         tymx = int(random.uniform(h*0.8,h+0.9))
     dst = src.copy()
     dst = dst[tym:tymx,txm:txmx,:]
-    labels[:,ls] -= txm
-    labels[:,ls+1] -= tym
+    
     return dst,labels
 def rotate(src,labels,ang,scale):
     h,w,_ = src.shape
     center =(w/2,h/2)
     mat = cv2.getRotationMatrix2D(center, ang, scale)
-    dst = cv2.warpAffine(src,mat,(w,h))
+    dst = cv2.warpAffine(src,mat,(w,h))   
     labels_ = labels.clone()
-    xs,ys,ws,hs = labels[:,ls:].t()
-    n = len(xs)
-    sx = abs(mat[0,0])
-    sy = abs(mat[0,1])
-    pts = np.stack([xs,ys,np.ones([n])],axis=1).T
-    tpts = torch.tensor(np.dot(mat,pts).T,dtype=torch.float)
-    labels_[:,ls] = tpts[:,0]
-    labels_[:,ls+1] = tpts[:,1]
-    labels_[:,ls+2] = (sx*ws + sy*hs)*scale
-    labels_[:,ls+3] = (sx*hs + sy*ws)*scale
-    mask = (tpts[:,0]>0)&(tpts[:,0]<w)&(tpts[:,1]>0)&(tpts[:,1]<h)
-    labels_ = labels_[mask,:]
+    if labels.shape[0]>0:
+        xs,ys,ws,hs = labels[:,ls:].t()
+        n = len(xs)
+        sx = abs(mat[0,0])
+        sy = abs(mat[0,1])
+        pts = np.stack([xs,ys,np.ones([n])],axis=1).T
+        tpts = torch.tensor(np.dot(mat,pts).T,dtype=torch.float)
+        labels_[:,ls] = tpts[:,0]
+        labels_[:,ls+1] = tpts[:,1]
+        labels_[:,ls+2] = (sx*ws + sy*hs)*scale
+        labels_[:,ls+3] = (sx*hs + sy*ws)*scale
+        mask = (tpts[:,0]>0)&(tpts[:,0]<w)&(tpts[:,1]>0)&(tpts[:,1]<h)
+        labels_ = labels_[mask,:]
     return dst,labels_
 def flip(src,labels):
     w = src.shape[1]
