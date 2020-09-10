@@ -7,7 +7,7 @@ import cv2
 import os
 from torch.nn import functional as F
 
-
+ls = 0 #0 for only bboxes,1 for labels and bboxes
 #stack functions for collate_fn
 #Notice: all dicts need have same keys and all lists should have same length
 def stack_dicts(dicts):
@@ -25,7 +25,24 @@ def stack_list(lists):
     for k in range(len(lists[0])):
         res[k] = torch.stack([obj[k] for obj in lists])
     return res
-
+def rand(item):
+    try:
+        tmp=[]
+        for i in item:
+            tmp.append(random.uniform(-i,i))
+    except:
+        if random.random()<0.5:
+            return random.uniform(-i,i)
+        else:
+            return 0
+    finally:
+        return tuple(tmp)   
+def get_croppable_part(labels):
+    min_x = torch.min(labels[:,ls]-labels[:,ls+2]/2)
+    min_y = torch.min(labels[:,ls+1]-labels[:,ls+3]/2)
+    max_x = torch.max(labels[:,ls]+labels[:,ls+2]/2)
+    max_y = torch.max(labels[:,ls+1]+labels[:,ls+3]/2)
+    return (min_x,min_y,max_x,max_y)
 def valid_scale(src,vs):
     img = cv2.cvtColor(src,cv2.COLOR_RGB2HSV).astype(np.float)
     img[:,:,2] *= (1+vs)
@@ -34,28 +51,53 @@ def valid_scale(src,vs):
     return img
 def resize(src,tsize):
     dst = cv2.resize(src,(tsize[1],tsize[0]),interpolation=cv2.INTER_LINEAR)
-    return dst    
-def rotate(src,ang,labels):
+    return dst
+def translate(src,labels):
+    h,w,_ = src.shape
+    mx,my,mxx,mxy = get_croppable_part(labels)
+    tx = random.uniform(-mx,w-mxx-1)
+    ty = random.uniform(-my,h-mxy-1)
+    mat = np.array([[1,0,tx],[0,1,ty]])
+    dst = cv2.warpAffine(src,mat,(w,h))
+
+    labels[:,ls] += tx
+    labels[:,ls+1] += ty
+    return dst,labels
+def crop(src,labels):
+    h,w,_ = src.shape
+    mx,my,mxx,mxy = get_croppable_part(labels)
+    txm = random.randint(0,mx)
+    tym = random.randint(0,my)
+    txmx = random.randint(mxx+1,w)
+    tymx = random.randint(mxy+1,h)
+    dst = src.copy()
+    dst = dst[tym:tymx,txm:txmx,:]
+    labels[:,ls] -= txm
+    labels[:,ls+1] -= tym
+    return dst,labels
+def rotate(src,labels,ang,scale):
     h,w,_ = src.shape
     center =(w/2,h/2)
-    mat = cv2.getRotationMatrix2D(center, ang, 1.0)
+    mat = cv2.getRotationMatrix2D(center, ang, scale)
     dst = cv2.warpAffine(src,mat,(w,h))
     labels_ = labels.clone()
     xs,ys,ws,hs = labels[:,1:].T
     n = len(xs)
-    cos = abs(mat[0,0])
-    sin = abs(mat[0,1])
+    sx = abs(mat[0,0])
+    sy = abs(mat[0,1])
     pts = np.stack([xs,ys,np.ones([n])],axis=1).T
     tpts = torch.tensor(np.dot(mat,pts).T,dtype=torch.float)
-    labels_[:,0] = tpts[:,0]
-    labels_[:,1] = tpts[:,1]
-    labels_[:,2] = (cos*ws + sin*hs)
-    labels_[:,3] = (cos*hs + sin*ws)
+    labels_[:,ls] = tpts[:,0]
+    labels_[:,ls+1] = tpts[:,1]
+    labels_[:,ls+2] = (sx*ws + sy*hs)*scale
+    labels_[:,ls+3] = (sx*hs + sy*ws)*scale
+    mask = (tpts[:0]>0)&(tpts[:0]<w)&(tpts[:1]>0)&(tpts[:1]<h)
+    labels_ = labels_[mask,:]
     return dst,labels_
 def flip(src,labels):
     w = src.shape[1]
     dst = cv2.flip(src,1)
-    labels[:,0] = w-1-labels[:,0]
+    labels[:,ls] = w-1-labels[:,ls]
     return dst,labels
 def color_normalize(img,mean):
     img = img.astype(np.float)
@@ -83,13 +125,12 @@ class VOC_dataset(data.Dataset):
              data /= 255.0
         return data
     def gen_gts(self,anno):
-        gts = torch.zeros((anno['obj_num'],4),dtype=torch.float)
+        gts = torch.zeros((anno['obj_num'],ls+4),dtype=torch.float)
         if anno['obj_num'] == 0:
             return gts
-        labels = torch.tensor(anno['labels']) #ignore hard
-        assert labels.shape[-1] == 4
-        gts[:] =  labels
-        return gts
+        labels = torch.tensor(anno['labels'])[:,ls+4]
+        assert labels.shape[-1] == ls+4
+        return labels
         
     def normalize_gts(self,labels,size):
         #transfer
@@ -113,20 +154,25 @@ class VOC_dataset(data.Dataset):
         img = cv2.imread(os.path.join(self.img_path,name+'.jpg'))
         ##print(img.shape)
         img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-        h,w = img.shape[:2]
-        img,pad = self.pad_to_square(img)
-        size = img.shape[0]
+        h,w = img.shape[:2]        
         labels = self.gen_gts(anno)
         if self.mode=='train':
-            labels[:,1]+=pad[1]
-            labels[:,2]+=pad[0]
             if (random.randint(0,1)==1) and self.cfg.flip:
                 img,labels = flip(img,labels)
+            if (random.randint(0,1)==1) and self.cfg.crop:
+                img,labels = translate(img,labels)
+            if (random.randint(0,1)==1) and self.cfg.trans:
+                img,labels = crop(img,labels)
+            img,pad = self.pad_to_square(img)
+            size = img.shape[0]
+            labels[:,ls]+=pad[1]
+            labels[:,ls+1]+=pad[0]
             data = self.img_to_tensor(img)
             labels = self.normalize_gts(labels,size)
             return data,labels      
         else:
             #validation set
+            img,pad = self.pad_to_square(img)
             img = resize(img,(self.cfg.size,self.cfg.size))
             data = self.img_to_tensor(img)
             info ={'size':(h,w),'img_id':name,'pad':pad}
@@ -146,7 +192,7 @@ class VOC_dataset(data.Dataset):
             data = torch.stack(data)
         elif self.mode=='train':
             data,labels = list(zip(*batch))
-            if self.accm_batch % 5 == 0:
+            if self.accm_batch % 10 == 0:
                 self.size = random.choice(self.cfg.sizes)
             tsize = (self.size,self.size)
             self.accm_batch += 1
@@ -156,18 +202,17 @@ class VOC_dataset(data.Dataset):
                 
         for i,bboxes in enumerate(labels):
             if len(bboxes)>0:
-                label = torch.zeros(len(bboxes),5)
+                label = torch.zeros(len(bboxes),ls+5)
                 label[:,1:] = bboxes
                 label[:,0] = i
                 tmp.append(label)
         if len(tmp)>0:
             labels = torch.cat(tmp,dim=0)
-            labels = labels.reshape(-1,5)
-            area = labels[:,3]*labels[:,4]
-            idx = torch.argsort(area,descending=True)
-            labels = labels[idx,:].reshape(-1,5)
+            labels = labels.reshape(-1,ls+5)
+            idx = torch.argsort(labels[:,ls+2],descending=True)
+            labels = labels[idx,:].reshape(-1,ls+5)
         else:
-            labels = torch.tensor(tmp,dtype=torch.float).reshape(-1,5)
+            labels = torch.tensor(tmp,dtype=torch.float).reshape(-1,ls+5)
         if self.mode=='train':
             return data,labels
         else:

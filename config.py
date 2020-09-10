@@ -63,8 +63,10 @@ class Config:
             self.bs = 32 # batch size
             self.flip = True
             #augmentation parameter
-            self.rot = 0
-            self.crop = 0.2
+            self.rot = 10
+            self.trans = True
+            self.crop = True
+            self.scale = 0.2
             self.valid_scale = 0.25
             #train_setting
             self.lr = 0.01
