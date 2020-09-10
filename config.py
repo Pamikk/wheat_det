@@ -66,7 +66,7 @@ class Config:
             self.rot = 10
             self.trans = True
             self.crop = True
-            self.scale = 0.2
+            self.scale = 0.1
             self.valid_scale = 0.25
             #train_setting
             self.lr = 0.01

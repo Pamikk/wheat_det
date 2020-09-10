@@ -66,10 +66,10 @@ def translate(src,labels):
 def crop(src,labels):
     h,w,_ = src.shape
     mx,my,mxx,mxy = get_croppable_part(labels)
-    txm = random.randint(0,mx)
-    tym = random.randint(0,my)
-    txmx = random.randint(mxx+1,w)
-    tymx = random.randint(mxy+1,h)
+    txm = int(random.uniform(0,mx))
+    tym = int(random.uniform(0,my))
+    txmx = int(random.uniform(mxx,w+0.9))
+    tymx = int(random.uniform(mxy,h+0.9))
     dst = src.copy()
     dst = dst[tym:tymx,txm:txmx,:]
     labels[:,ls] -= txm
@@ -81,7 +81,7 @@ def rotate(src,labels,ang,scale):
     mat = cv2.getRotationMatrix2D(center, ang, scale)
     dst = cv2.warpAffine(src,mat,(w,h))
     labels_ = labels.clone()
-    xs,ys,ws,hs = labels[:,1:].T
+    xs,ys,ws,hs = labels[:,ls:].t()
     n = len(xs)
     sx = abs(mat[0,0])
     sy = abs(mat[0,1])
@@ -91,7 +91,7 @@ def rotate(src,labels,ang,scale):
     labels_[:,ls+1] = tpts[:,1]
     labels_[:,ls+2] = (sx*ws + sy*hs)*scale
     labels_[:,ls+3] = (sx*hs + sy*ws)*scale
-    mask = (tpts[:0]>0)&(tpts[:0]<w)&(tpts[:1]>0)&(tpts[:1]<h)
+    mask = (tpts[:,0]>0)&(tpts[:,0]<w)&(tpts[:,1]>0)&(tpts[:,1]<h)
     labels_ = labels_[mask,:]
     return dst,labels_
 def flip(src,labels):
@@ -128,7 +128,7 @@ class VOC_dataset(data.Dataset):
         gts = torch.zeros((anno['obj_num'],ls+4),dtype=torch.float)
         if anno['obj_num'] == 0:
             return gts
-        labels = torch.tensor(anno['labels'])[:,ls+4]
+        labels = torch.tensor(anno['labels'])[:,:ls+4]
         assert labels.shape[-1] == ls+4
         return labels
         
@@ -159,10 +159,14 @@ class VOC_dataset(data.Dataset):
         if self.mode=='train':
             if (random.randint(0,1)==1) and self.cfg.flip:
                 img,labels = flip(img,labels)
-            if (random.randint(0,1)==1) and self.cfg.crop:
-                img,labels = translate(img,labels)
             if (random.randint(0,1)==1) and self.cfg.trans:
+                img,labels = translate(img,labels)
+            if (random.randint(0,1)==1) and self.cfg.crop:
                 img,labels = crop(img,labels)
+            if (random.randint(0,1)==1) and self.cfg.rot:
+                ang = random.uniform(-self.cfg.rot,self.cfg.rot)
+                scale = random.uniform(1-self.cfg.scale,1+self.cfg.scale)
+                img,labels = rotate(img,labels,ang,scale)
             img,pad = self.pad_to_square(img)
             size = img.shape[0]
             labels[:,ls]+=pad[1]
