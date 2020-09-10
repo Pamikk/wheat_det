@@ -25,18 +25,7 @@ def stack_list(lists):
     for k in range(len(lists[0])):
         res[k] = torch.stack([obj[k] for obj in lists])
     return res
-def rand(item):
-    try:
-        tmp=[]
-        for i in item:
-            tmp.append(random.uniform(-i,i))
-    except:
-        if random.random()<0.5:
-            return random.uniform(-i,i)
-        else:
-            return 0
-    finally:
-        return tuple(tmp)   
+
 def get_croppable_part(labels):
     min_x = torch.min(labels[:,ls]-labels[:,ls+2]/2)
     min_y = torch.min(labels[:,ls+1]-labels[:,ls+3]/2)
@@ -130,6 +119,8 @@ class VOC_dataset(data.Dataset):
             return gts
         labels = torch.tensor(anno['labels'])[:,:ls+4]
         assert labels.shape[-1] == ls+4
+        labels[:,ls] += labels[:,2]/2
+        labels[:,ls+1] += labels[:,3]/2
         return labels
         
     def normalize_gts(self,labels,size):
