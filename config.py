@@ -44,7 +44,7 @@ class Config:
         self.res = 50
         self.size = 512
         self.multiscale = 3
-        self.sizes = list(range(self.size-32*self.multiscale,self.size+1,32)) 
+        self.sizes = list(range(self.size-32*self.multiscale,self.size+32*self.multiscale+1,32)) 
         self.nms_threshold = 0.5
         self.dc_threshold = 0.75
         
@@ -81,8 +81,8 @@ class Config:
             self.val_every_k_epoch = 10
             self.adjust_lr = False
             #loss hyp
-            self.obj_scale = 1
-            self.noobj_scale = 1
+            self.obj_scale = 2
+            self.noobj_scale = 10
             self.ignore_threshold = 0.7
             self.match_threshold = 0.01#
 
