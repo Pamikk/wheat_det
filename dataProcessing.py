@@ -43,9 +43,14 @@ def resize(src,tsize):
     return dst
 def translate(src,labels):
     h,w,_ = src.shape
-    mx,my,mxx,mxy = get_croppable_part(labels)
-    tx = random.uniform(-mx,w-mxx-1)
-    ty = random.uniform(-my,h-mxy-1)
+    if labels.shape[0]>0:
+        mx,my,mxx,mxy = get_croppable_part(labels)
+        tx = random.uniform(-mx,w-mxx-1)
+        ty = random.uniform(-my,h-mxy-1)
+    else:
+        tx = random.uniform(-w*0.2,w*0.2)
+        ty = random.uniform(-h*0.2,h*0.2)
+    
     mat = np.array([[1,0,tx],[0,1,ty]])
     dst = cv2.warpAffine(src,mat,(w,h))
 
@@ -54,11 +59,17 @@ def translate(src,labels):
     return dst,labels
 def crop(src,labels):
     h,w,_ = src.shape
-    mx,my,mxx,mxy = get_croppable_part(labels)
-    txm = int(random.uniform(0,mx))
-    tym = int(random.uniform(0,my))
-    txmx = int(random.uniform(mxx,w+0.9))
-    tymx = int(random.uniform(mxy,h+0.9))
+    if labels.shape[0]>0:
+        mx,my,mxx,mxy = get_croppable_part(labels)
+        txm = int(random.uniform(0,mx))
+        tym = int(random.uniform(0,my))
+        txmx = int(random.uniform(mxx,w+0.9))
+        tymx = int(random.uniform(mxy,h+0.9))
+    else:
+        txm = int(random.uniform(0,w*0.2))
+        tym = int(random.uniform(0,h*0.2))
+        txmx = int(random.uniform(w*0.8,w+0.9))
+        tymx = int(random.uniform(h*0.8,h+0.9))
     dst = src.copy()
     dst = dst[tym:tymx,txm:txmx,:]
     labels[:,ls] -= txm
