@@ -41,38 +41,38 @@ def valid_scale(src,vs):
 def resize(src,tsize):
     dst = cv2.resize(src,(tsize[1],tsize[0]),interpolation=cv2.INTER_LINEAR)
     return dst
-def translate(src,labels):
+def translate(src,labels,trans):
     h,w,_ = src.shape
     if labels.shape[0]>0:
         mx,my,mxx,mxy = get_croppable_part(labels)
-        tx = random.uniform(-mx,w-mxx-1)
-        ty = random.uniform(-my,h-mxy-1)
-        labels[:,ls] += tx
-        labels[:,ls+1] += ty
+        tx = random.uniform(-min(mx,w*trans),min(w*trans,w-mxx-1))
+        ty = random.uniform(-min(my,h*trans),min(h*trans,h-mxy-1))
     else:
-        tx = random.uniform(-w*0.2,w*0.2)
-        ty = random.uniform(-h*0.2,h*0.2)
-    
+        tx = random.uniform(-w*trans,w*trans)
+        ty = random.uniform(-h*trans,h*trans)
     mat = np.array([[1,0,tx],[0,1,ty]])
     dst = cv2.warpAffine(src,mat,(w,h))
-
+    labels[:,ls] += tx
+    labels[:,ls+1] += ty
     
     return dst,labels
-def crop(src,labels):
+def crop(src,labels,crop):
     h,w,_ = src.shape
+    if ((w<10)or(h<10)):
+        return src,labels
     if labels.shape[0]>0:
         mx,my,mxx,mxy = get_croppable_part(labels)
-        txm = int(random.uniform(0,mx))
-        tym = int(random.uniform(0,my))
-        txmx = int(random.uniform(mxx,w+0.9))
-        tymx = int(random.uniform(mxy,h+0.9))
+        txm = int(random.uniform(0,min(mx,w*crop)))
+        tym = int(random.uniform(0,min(my,h*crop)))
+        txmx = int(random.uniform(max(mxx,w*(1-crop)),w+0.9))
+        tymx = int(random.uniform(max(mxy,h*(1-crop)),h+0.9))
         labels[:,ls] -= txm
         labels[:,ls+1] -= tym
     else:
-        txm = int(random.uniform(0,w*0.2))
-        tym = int(random.uniform(0,h*0.2))
-        txmx = int(random.uniform(w*0.8,w+0.9))
-        tymx = int(random.uniform(h*0.8,h+0.9))
+        txm = int(random.uniform(0,w*crop))
+        tym = int(random.uniform(0,h*crop))
+        txmx = int(random.uniform(w*(1-crop),w+0.9))
+        tymx = int(random.uniform(h*(1-crop),h+0.9))
     dst = src.copy()
     dst = dst[tym:tymx,txm:txmx,:]
     
@@ -94,7 +94,7 @@ def rotate(src,labels,ang,scale):
         labels_[:,ls+1] = tpts[:,1]
         labels_[:,ls+2] = (sx*ws + sy*hs)*scale
         labels_[:,ls+3] = (sx*hs + sy*ws)*scale
-        mask = (tpts[:,0]>0)&(tpts[:,0]<w)&(tpts[:,1]>0)&(tpts[:,1]<h)
+        mask = (tpts[:,0]-labels_[:,ls+2]/2>0)&(tpts[:,0]+labels_[:,ls+2]/2<w)&(tpts[:,1]-labels_[:,ls+3]>0)&(tpts[:,1]+labels_[:,ls+3]/2<h)
         labels_ = labels_[mask,:]
     return dst,labels_
 def flip(src,labels):

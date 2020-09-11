@@ -43,7 +43,7 @@ class Config:
         self.cls_num = 0       
         self.res = 50
         self.size = 512
-        self.multiscale = 3
+        self.multiscale = 1
         self.sizes = list(range(self.size-32*self.multiscale,self.size+32*self.multiscale+1,32)) 
         self.nms_threshold = 0.5
         self.dc_threshold = 0.75
@@ -64,8 +64,8 @@ class Config:
             self.flip = True
             #augmentation parameter
             self.rot = 10
-            self.trans = True
-            self.crop = True
+            self.trans = 0.2
+            self.crop = 0.2
             self.scale = 0.1
             self.valid_scale = 0.25
             #train_setting
