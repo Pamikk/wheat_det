@@ -165,9 +165,9 @@ class VOC_dataset(data.Dataset):
             if (random.randint(0,1)==1) and self.cfg.flip:
                 img,labels = flip(img,labels)
             if (random.randint(0,1)==1) and self.cfg.trans:
-                img,labels = translate(img,labels)
+                img,labels = translate(img,labels,self.cfg.trans)
             if (random.randint(0,1)==1) and self.cfg.crop:
-                img,labels = crop(img,labels)
+                img,labels = crop(img,labels,self.cfg.crop)
             if (random.randint(0,1)==1) and self.cfg.rot:
                 ang = random.uniform(-self.cfg.rot,self.cfg.rot)
                 scale = random.uniform(1-self.cfg.scale,1+self.cfg.scale)

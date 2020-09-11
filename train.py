@@ -38,7 +38,7 @@ def main(args,cfgs):
     if args.lr:
         config.lr = args.lr 
         config.adjust_lr = True
-    network = NetAPI(config,args.net)
+    network = NetAPI(config,args.net,init=not args.resume)
     loss = LossAPI(config,args.loss)
     torch.cuda.empty_cache()
     det = Trainer(config,datasets,network,loss,(args.resume,args.epochs))
