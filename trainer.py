@@ -148,7 +148,8 @@ class Trainer:
             del inputs,outs,labels
             for k in running_loss:
                 if k in display.keys():
-                    running_loss[k] += display[k]/n
+                    if not(np.isnan(display[k])):
+                        running_loss[k] += display[k]/n
             loss.backward()
             #solve gradient explosion problem caused by large learning rate or small batch size
             #nn.utils.clip_grad_value_(self.net.parameters(), clip_value=2.0) 
