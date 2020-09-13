@@ -23,7 +23,10 @@ Our goal is to analyze different tricks.
   + [x] Hard NMS
   + [x] Soft NMS[3]
 + Results
-  + TBC
+  + On Validation Set
+    + YOLO-SPP
+      + YOLO Loss, mAP:0.63
+
 + Reference:
   + [1]:"Generalized Intersection over Union: A Metric and A Loss for BOunding Box Regression":https://giou.stanford.edu/GIoU.pdf
   + [2]:"v-net loss"
