@@ -54,7 +54,7 @@ def main(args,cfgs):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=100, help="number of epochs")
-    parser.add_argument("--resume", type=int, default=0, help="start from epoch?")
+    parser.add_argument("--resume", type=str, default=None, help="start from epoch?")
     parser.add_argument("--exp",type=str,default='exp',help="name of exp")
     parser.add_argument("--res",type=int,default=50,help="resnet depth")
     parser.add_argument("--mode",type=str,default='train',help="only validation")

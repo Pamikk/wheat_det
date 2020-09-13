@@ -46,7 +46,7 @@ class Config:
         self.multiscale = 3
         self.sizes = list(range(self.size-32*self.multiscale,self.size+32*self.multiscale+1,32)) 
         self.nms_threshold = 0.5
-        self.dc_threshold = 0.7
+        self.dc_threshold = 0.5
         
         
         #loss args
@@ -73,7 +73,7 @@ class Config:
             self.weight_decay=5e-4
             self.momentum = 0.9
             #lr_scheduler
-            self.min_lr = 5e-5
+            self.min_lr = 2e-5
             self.lr_factor = 0.2
             self.patience = 10
             #exp_setting
@@ -91,5 +91,5 @@ class Config:
         elif mode=='trainval':
             self.file = './data/trainval.json'
         elif mode=='test':
-            self.file = './data/trainval.json'
+            self.file = './data/val.json'
         

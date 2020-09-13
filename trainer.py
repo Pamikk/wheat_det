@@ -66,12 +66,13 @@ class Trainer:
         self.save_pred = False
         self.adjust_lr = cfg.adjust_lr
         #load from epoch if required
-        if start>0:
-            self.load_epoch(str(start))
-        if start==-1:
-            self.load_last_epoch()
-        if start==-2:
-            self.load_epoch('best')#best moving
+        if start:            
+            if start==-1:
+                self.load_last_epoch()
+            else:
+                self.load_epoch(start.strip())
+        else:
+            self.start = 0
         self.net = self.net.to(self.device)
     def load_last_epoch(self):
         files = os.listdir(self.checkpoints)
@@ -139,7 +140,8 @@ class Trainer:
         self.net.train()
         n = len(self.trainset)
         self.loss.not_match = 0
-        for i,data in tqdm(enumerate(self.trainset)):
+        i = 0
+        for data in tqdm(self.trainset):
             inputs,labels = data
             outs = self.net(inputs.to(self.device).float())
             labels = labels.to(self.device).float()
@@ -158,6 +160,7 @@ class Trainer:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
             del loss
+            i+=1
         self.logMemoryUsage()
         print(f'#Gt not matched:{self.loss.not_match}')
         self.loss.reset_notmatch()
@@ -220,7 +223,7 @@ class Trainer:
             for th in thresholds:
                 batch_metrics[th] = []
             ngt=0
-            for _,data in tqdm(enumerate(valset)):
+            for data in tqdm(valset):
                 inputs,labels,info = data
                 outs = self.net(inputs.to(self.device).float())
                 size = inputs.shape[-2:]
@@ -269,7 +272,7 @@ class Trainer:
         self.net.eval()
         res = {}
         with torch.no_grad():
-            for _,data in tqdm(enumerate(self.testset)):
+            for data in tqdm(self.testset):
                 inputs,info = data
                 outs = self.net(inputs.to(self.device).float())
                 size = inputs.shape[-2:]
@@ -283,12 +286,12 @@ class Trainer:
                     pred[:,:4]*=max(tsize)
                     pred[:,0] -= pad[1]
                     pred[:,1] -= pad[0]
-                    pred_nms = pred               
+                    pred_nms = pred[pred[:,-1]>=0.5,:]               
                     #pred_nms = nms(pred,self.conf_threshold, self.nms_threshold)
                     pds_ = list(pred_nms.cpu().numpy().astype(float))
                     pds_ = [list(pd) for pd in pds_]
                     res[name] = pds_
-        
+        self.logMemoryUsage()
         json.dump(res,open(os.path.join(self.predictions,'pred_test.json'),'w'))
 
         

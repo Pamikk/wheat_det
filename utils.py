@@ -257,8 +257,7 @@ def cal_tp_per_item(pds,gts,threshold=0.5):
         if iou >=threshold  and selected[best] !=1:
             selected[best] = 1
             tps[i] = 1.0
-            m -=1
-               
+            m -=1          
     return [tps,scores]
     
 def xyhw2xy(boxes_):
@@ -295,6 +294,8 @@ def rescale_boxes(boxes, current_dim, original_shape):
 
     
 def non_maximum_supression(preds,conf_threshold=0.5,nms_threshold = 0.4):
+    if len(preds)==0:
+        return preds
     preds = preds[preds[:,4]>conf_threshold]
     if len(preds) == 0:
         return preds      
@@ -313,9 +314,12 @@ def non_maximum_supression(preds,conf_threshold=0.5,nms_threshold = 0.4):
         dets = dets[~mask]
     return torch.stack(keep).reshape(-1,5)
 def non_maximum_supression_soft(preds,conf_threshold=0.5,nms_threshold=0.4):
+    if len(preds)==0:
+        return preds
     keep = []
-    dets = preds[:,:5]
-    dets = dets[dets[:,4]>conf_threshold]
+    dets = preds[preds[:,4]>conf_threshold]
+    if len(dets)==0:
+        return dets
     while len(dets)>0:
         val,idx = torch.max(dets[:,4],dim=0)
         if val<=conf_threshold:
@@ -325,28 +329,10 @@ def non_maximum_supression_soft(preds,conf_threshold=0.5,nms_threshold=0.4):
         ious = iou_wt_center(pd[:4],dets[:,:4])
         mask = (ious>nms_threshold)
         keep.append(pd)
-        dets[mask,4] *= (1-ious[mask])*(1-val)
+        dets[mask,4] *= (1-ious[mask])
         dets = dets[dets[:,4]>conf_threshold]
     return torch.stack(keep).reshape(-1,5)
-def non_maximum_supression_eval(preds,conf_threshold=0.5,nms_threshold = 0.4):
-    preds = preds[preds[:,4]>conf_threshold]
-    if len(preds) == 0:
-        return preds      
-    score = preds[:,4]
-    idx = torch.argsort(score,descending=True)
-    dets = preds[idx]
-    keep = []
-    while len(dets)>0:
-        new = dets[0]
-        keep.append(new)
-        ious = iou_wt_center(dets[0,:4],dets[:,:4])
-        if not(ious[0]>=0.7):
-            ious[0] = 1
-        mask = (ious>nms_threshold)
-        #hard-nms        
-        dets = dets[~mask]
-    return torch.stack(keep).reshape(-1,5)
-
+#nms:0.5,conf:0.95,mAP:0.6331328052886033
 
 
 
