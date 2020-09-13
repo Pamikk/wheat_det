@@ -26,11 +26,12 @@ def stack_list(lists):
         res[k] = torch.stack([obj[k] for obj in lists])
     return res
 
-def get_croppable_part(labels):
-    min_x = torch.min(labels[:,ls]-labels[:,ls+2]/2)
-    min_y = torch.min(labels[:,ls+1]-labels[:,ls+3]/2)
-    max_x = torch.max(labels[:,ls]+labels[:,ls+2]/2)
-    max_y = torch.max(labels[:,ls+1]+labels[:,ls+3]/2)
+def get_croppable_part(labels,size):
+    h,w = size
+    min_x = max(torch.min(labels[:,ls]-labels[:,ls+2]/2),0)
+    min_y = max(torch.min(labels[:,ls+1]-labels[:,ls+3]/2),0)
+    max_x = min(torch.max(labels[:,ls]+labels[:,ls+2]/2),w-1)
+    max_y = min(torch.max(labels[:,ls+1]+labels[:,ls+3]/2),w-1)
     return (min_x,min_y,max_x,max_y)
 def valid_scale(src,vs):
     img = cv2.cvtColor(src,cv2.COLOR_RGB2HSV).astype(np.float)
@@ -44,7 +45,7 @@ def resize(src,tsize):
 def translate(src,labels,trans):
     h,w,_ = src.shape
     if labels.shape[0]>0:
-        mx,my,mxx,mxy = get_croppable_part(labels)
+        mx,my,mxx,mxy = get_croppable_part(labels,(h,w))
         tx = random.uniform(-min(mx,w*trans),min(w*trans,w-mxx-1))
         ty = random.uniform(-min(my,h*trans),min(h*trans,h-mxy-1))
     else:
@@ -61,7 +62,7 @@ def crop(src,labels,crop):
     if ((w<10)or(h<10)):
         return src,labels
     if labels.shape[0]>0:
-        mx,my,mxx,mxy = get_croppable_part(labels)
+        mx,my,mxx,mxy = get_croppable_part(labels,(h,w))
         txm = int(random.uniform(0,min(mx,w*crop)))
         tym = int(random.uniform(0,min(my,h*crop)))
         txmx = int(random.uniform(max(mxx,w*(1-crop)),w+0.9))
@@ -137,11 +138,15 @@ class VOC_dataset(data.Dataset):
         labels[:,ls+1] += labels[:,3]/2
         return labels
         
-    def normalize_gts(self,labels,size):
+    def normalize_gts(self,labels,size,aug):
         #transfer
         if len(labels)== 0:
             return labels
-        labels/=size 
+        labels/=size
+        mask = (labels[:,ls]<0)|(labels[:,ls+1]<0)|(labels[:,ls+1]>=1)|(labels[:,ls]>=1)
+        if mask.float().sum()>0:
+            print(aug)
+        labels = labels[~mask,:] 
         return labels
 
     def pad_to_square(self,img):
@@ -162,22 +167,27 @@ class VOC_dataset(data.Dataset):
         h,w = img.shape[:2]        
         labels = self.gen_gts(anno)
         if self.mode=='train':
+            aug = []
             if (random.randint(0,1)==1) and self.cfg.flip:
                 img,labels = flip(img,labels)
+                aug.append('flip')
             if (random.randint(0,1)==1) and self.cfg.trans:
                 img,labels = translate(img,labels,self.cfg.trans)
+                aug.append('trans')
             if (random.randint(0,1)==1) and self.cfg.crop:
                 img,labels = crop(img,labels,self.cfg.crop)
+                aug.append('crop')
             if (random.randint(0,1)==1) and self.cfg.rot:
                 ang = random.uniform(-self.cfg.rot,self.cfg.rot)
                 scale = random.uniform(1-self.cfg.scale,1+self.cfg.scale)
                 img,labels = rotate(img,labels,ang,scale)
+                aug.append('rotate')
             img,pad = self.pad_to_square(img)
             size = img.shape[0]
             labels[:,ls]+=pad[1]
             labels[:,ls+1]+=pad[0]
             data = self.img_to_tensor(img)
-            labels = self.normalize_gts(labels,size)
+            labels = self.normalize_gts(labels,size,aug)
             return data,labels      
         else:
             #validation set

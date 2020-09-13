@@ -3,4 +3,4 @@ __pycache__/
 __pycache__/config.cpython-37.pyc
 __pycache__/dataProcessing.cpython-37.pyc
 __pycache__/*.pyc
-__pycache__/config.cpython-37.pyc
+__pycache__/trainer.cpython-37.pyc

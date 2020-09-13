@@ -43,10 +43,10 @@ class Config:
         self.cls_num = 0       
         self.res = 50
         self.size = 512
-        self.multiscale = 1
+        self.multiscale = 3
         self.sizes = list(range(self.size-32*self.multiscale,self.size+32*self.multiscale+1,32)) 
         self.nms_threshold = 0.5
-        self.dc_threshold = 0.75
+        self.dc_threshold = 0.7
         
         
         #loss args
@@ -63,17 +63,17 @@ class Config:
             self.bs = 32 # batch size
             self.flip = True
             #augmentation parameter
-            self.rot = 10
+            self.rot = 20
             self.trans = 0.2
             self.crop = 0.2
-            self.scale = 0.1
+            self.scale = 0.2
             self.valid_scale = 0.25
             #train_setting
             self.lr = 0.01
             self.weight_decay=5e-4
             self.momentum = 0.9
             #lr_scheduler
-            self.min_lr = 1e-7
+            self.min_lr = 5e-5
             self.lr_factor = 0.2
             self.patience = 10
             #exp_setting
@@ -84,7 +84,7 @@ class Config:
             self.obj_scale = 2
             self.noobj_scale = 10
             self.ignore_threshold = 0.7
-            self.match_threshold = 0.01#
+            self.match_threshold = 0.001#
 
         elif mode=='val':
             self.file = './data/val.json'
