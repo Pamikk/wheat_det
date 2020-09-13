@@ -72,8 +72,8 @@ def crop(src,labels,crop):
     else:
         txm = int(random.uniform(0,w*crop))
         tym = int(random.uniform(0,h*crop))
-        txmx = int(random.uniform(w*(1-crop),w))
-        tymx = int(random.uniform(h*(1-crop),h))
+        txmx = int(random.uniform(w*(1-crop),w-0.1))
+        tymx = int(random.uniform(h*(1-crop),h-0.1))
     dst = src.copy()
     dst = dst[tym:tymx+1,txm:txmx+1,:]
     
