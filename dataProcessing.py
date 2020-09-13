@@ -65,17 +65,17 @@ def crop(src,labels,crop):
         mx,my,mxx,mxy = get_croppable_part(labels,(h,w))
         txm = int(random.uniform(0,min(mx,w*crop)))
         tym = int(random.uniform(0,min(my,h*crop)))
-        txmx = int(random.uniform(max(mxx,w*(1-crop)),w+0.9))
-        tymx = int(random.uniform(max(mxy,h*(1-crop)),h+0.9))
+        txmx = int(random.uniform(max(mxx,w*(1-crop)),w))
+        tymx = int(random.uniform(max(mxy,h*(1-crop)),h))
         labels[:,ls] -= txm
         labels[:,ls+1] -= tym
     else:
         txm = int(random.uniform(0,w*crop))
         tym = int(random.uniform(0,h*crop))
-        txmx = int(random.uniform(w*(1-crop),w+0.9))
-        tymx = int(random.uniform(h*(1-crop),h+0.9))
+        txmx = int(random.uniform(w*(1-crop),w))
+        tymx = int(random.uniform(h*(1-crop),h))
     dst = src.copy()
-    dst = dst[tym:tymx,txm:txmx,:]
+    dst = dst[tym:tymx+1,txm:txmx+1,:]
     
     return dst,labels
 def rotate(src,labels,ang,scale):
