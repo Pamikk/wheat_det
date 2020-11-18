@@ -138,7 +138,7 @@ class YOLO_SPP_GN(YOLO_SPP):
         upsample = nn.Identity()
         decoders=[block(self.in_channel,channel)]
         decoders.append(nn.Sequential(conv1x1(channel*block.multiple,channel),nn.GroupNorm(channel//4,channel),self.relu))        
-        pred = nn.Sequential(conv3x3(channel,channel*block.multiple),nn.BatchNorm2d(channel*block.multiple//4,channel*block.multiple),self.relu,
+        pred = nn.Sequential(conv3x3(channel,channel*block.multiple),nn.nn.GroupNorm(channel*block.multiple//4,channel*block.multiple),self.relu,
                 conv1x1(channel*block.multiple,out_channel,bias=True))
         self.in_channel = channel
         return nn.ModuleList([upsample,nn.Sequential(*decoders),pred])    

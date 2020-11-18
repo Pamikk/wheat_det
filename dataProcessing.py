@@ -112,7 +112,7 @@ def color_normalize(img,mean):
 def add_mosaic(src,ms):
     mnum = 4 #4x4
     col = src.mean(0).mean(0)
-    h,w,_= src.size
+    h,w,_= src.shape
     patch = min(min(h,w)*ms,15)
     step_h,step_w = h//(mnum+1),w//(mnum+1)
     for i in range(1,mnum+1):
@@ -187,9 +187,9 @@ class VOC_dataset(data.Dataset):
         h,w = img.shape[:2]        
         labels = self.gen_gts(anno)
         if (self.mode=='train'):
+            aug = []
             if (idx%2==1):
-                #make sure original images get trained
-                aug = []
+                #make sure original images get trained 
                 if (random.randint(0,1)==1) and self.cfg.flip:
                     img,labels = flip(img,labels)
                     aug.append('flip')
