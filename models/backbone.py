@@ -115,79 +115,15 @@ class BaseBlock(nn.Module):
         y = self.relu(y)
 
         return y
-class BaseBlock_GN(nn.Module):
+class BaseBlock_GN(BaseBlock):
     #for Darknet
     multiple=2
     def __init__(self,in_channels,channels,stride=1):
-        super(BaseBlock,self).__init__()
-        self.conv1 = conv1x1(in_channels,channels,stride)
-        self.relu = nn.LeakyReLU(0.1)
+        super(BaseBlock_GN,self).__init__()
         groups = channels//4
         self.bn1 = nn.GroupNorm(groups,channels)
-        self.conv2 = conv3x3(channels,channels*BaseBlock.multiple)
-        if in_channels != channels*BaseBlock.multiple or stride!=1:
-            self.downsample =  nn.Sequential(conv1x1(in_channels,channels*BaseBlock.multiple,stride),
-                                            nn.BatchNorm2d(channels*BaseBlock.multiple))
-        else:
-            self.downsample = nn.Identity()
         self.bn2 = nn.GroupNorm(groups*BaseBlock.multiple,channels*BaseBlock.multiple)
-    def forward(self,x):
-        y = self.conv1(x)
-        y = self.bn1(y)
-        y = self.relu(y)
 
-        y = self.conv2(y)
-        y = self.bn2(y)
-
-        if self.downsample != None:
-            x = self.downsample(x)
-        y += x
-        y = self.relu(y)
-
-        return y
-class Darknet_GN(nn.Module):
-    def __init__(self):
-        super(Darknet,self).__init__()
-        self.depths = [1,2,8,8,4]
-        self.levels = len(self.depths)
-        self.channels = [32,64,128,256,512]
-        self.relu = nn.LeakyReLU(0.1)
-        self.conv1 = conv3x3(3,32)
-        self.bn1 = nn.GroupNorm(8,32)
-        self.in_channel = self.channels[0]
-        encoders = []
-        self.out_channels =[]
-        for i in range(self.levels):
-            encoders.append(self.make_encoders(self.channels[i],BaseBlock,depth=self.depths[i],downsample=True))
-        self.encoders = nn.ModuleList(encoders)
-    def make_encoders(self,channel,block,depth=1,downsample=False):
-        blocks = []
-        if downsample:
-            out_channel = channel*2
-            blocks.append(nn.Sequential(conv3x3(self.in_channel,out_channel,stride=2),
-                          nn.BatchNorm2d(out_channel),self.relu))
-            self.in_channel = out_channel
-        for _ in range(depth):
-            blocks.append(block(self.in_channel,channel))
-            self.in_channel = channel*block.multiple
-        self.out_channels.insert(0,self.in_channel)
-        return nn.Sequential(*blocks)
-
-    def forward(self,x):
-        #suppose x has shape: 3,256,256
-               
-        x = self.conv1(x)
-        x = self.bn1(x) 
-        x = self.relu(x)       
-        
-        
-        #32,256,256
-
-        feats = [x]
-        for encoder in self.encoders:
-            x = encoder(x)
-            feats.insert(0,x)
-        return feats
 class Darknet(nn.Module):
     def __init__(self,path):
         super(Darknet,self).__init__()
@@ -282,7 +218,22 @@ class Darknet(nn.Module):
                 ptr += num_w
                 assert len(stack)==0
         print("finish load from path:",self.path)
-
+class Darknet_GN(Darknet):
+    def __init__(self):
+        super(Darknet_GN,self).__init__()
+        self.bn1 = nn.GroupNorm(8,32)
+    def make_encoders(self,channel,block,depth=1,downsample=False):
+        blocks = []
+        if downsample:
+            out_channel = channel*2
+            blocks.append(nn.Sequential(conv3x3(self.in_channel,out_channel,stride=2),
+                          nn.GroupNorm(out_channel//4,out_channel),self.relu))
+            self.in_channel = out_channel
+        for _ in range(depth):
+            blocks.append(block(self.in_channel,channel))
+            self.in_channel = channel*block.multiple
+        self.out_channels.insert(0,self.in_channel)
+        return nn.Sequential(*blocks)
 class ResNet(nn.Module):
     def __init__(self,depth):
         super(ResNet,self).__init__()

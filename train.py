@@ -23,12 +23,10 @@ def main(args,cfgs):
     train_set = dataset(config)
     val_set = dataset(val_cfg,mode='val')
     trainval_set = dataset(trainval_cfg,mode='val')
-    test_set = Testset(test_cfg,mode='test')
     train_loader = DataLoader(train_set,batch_size=args.bs,shuffle=True,pin_memory=False,collate_fn=train_set.collate_fn)
     val_loader = DataLoader(val_set,batch_size=val_cfg.bs,shuffle=False,pin_memory=False,collate_fn=val_set.collate_fn)
     trainval_loader = DataLoader(trainval_set,batch_size=trainval_cfg.bs,shuffle=False,pin_memory=False,collate_fn=val_set.collate_fn)
-    test_loader = DataLoader(test_set,batch_size=test_cfg.bs,shuffle=False,pin_memory=False,collate_fn=test_set.collate_fn)
-    datasets = {'train':train_loader,'val':val_loader,'trainval':trainval_loader,'test':test_loader}
+    datasets = {'train':train_loader,'val':val_loader,'trainval':trainval_loader}
     config.exp_name = args.exp
     config.device = torch.device("cuda")
     torch.cuda.empty_cache()
@@ -39,7 +37,7 @@ def main(args,cfgs):
     if args.lr:
         config.lr = args.lr 
         config.adjust_lr = True
-    network = NetAPI(config,args.net,init=not args.resume)
+    network = NetAPI(config,args.net)
     loss = LossAPI(config,args.loss)
     torch.cuda.empty_cache()
     det = Trainer(config,datasets,network,loss,(args.resume,args.epochs))

@@ -243,7 +243,7 @@ class LossAPI(nn.Module):
             return res,torch.stack(totals).sum()
     def reset_notmatch(self):
         self.not_match = 0
-Losses = {'yolo':YOLOLoss,'yolo_iou':YOLOLoss_iou,'yolo_gou':YOLOLoss_gou,'yolo_com':YOLOLoss_com}
+Losses = {'yolo':YOLOLoss,'yolo_gou':YOLOLoss_gou,'yolo_com':YOLOLoss_com}
 
 
 
