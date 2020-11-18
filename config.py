@@ -39,14 +39,14 @@ class Config:
     def __init__(self,mode='train'):
         #Path Setting
         self.img_path = '../dataset/global-wheat/train'
-        self.checkpoint='../checkpoints'
+        self.checkpoint='../checkpoint'
         self.cls_num = 0       
         self.res = 50
-        self.size = 512
-        self.multiscale = 3
+        self.size = 1024
+        self.multiscale = 1
         self.sizes = list(range(self.size-32*self.multiscale,self.size+32*self.multiscale+1,32)) 
         self.nms_threshold = 0.5
-        self.dc_threshold = 0.5
+        self.dc_threshold = 0.95
         
         
         #loss args
@@ -58,6 +58,7 @@ class Config:
         
         self.bs = 8       
         self.pre_trained_path = '../network_weights'
+        self.mode=mode
         if mode=='train':
             self.file=f'./data/train.json'
             self.bs = 32 # batch size
@@ -84,7 +85,7 @@ class Config:
             self.obj_scale = 2
             self.noobj_scale = 10
             self.ignore_threshold = 0.7
-            self.match_threshold = 0.001#
+            self.match_threshold = 0.0001#
 
         elif mode=='val':
             self.file = './data/val.json'

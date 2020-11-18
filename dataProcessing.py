@@ -236,7 +236,39 @@ class VOC_dataset(data.Dataset):
             return data,labels
         else:
             return data,labels,info
+class Testset(data.Dataset):
+    def __init__(self,cfg):
+        self.imgs = json.load(open(cfg.file,'r'))
+        self.size = cfg.size
+    def __len__(self):
+        return len(self.imgs)
+    def img_to_tensor(self,img):
+        data = torch.tensor(np.transpose(img,[2,0,1]),dtype=torch.float)
+        if data.max()>1:
+             data /= 255.0
+        return data
+    def pad_to_square(self,img):
+        h,w,_= img.shape
+        ts = max(h,w)
+        diff1 = abs(h-ts)
+        diff2 = abs(w-ts)
+        pad = (diff1//2,diff2//2,diff1-diff1//2,diff2-diff2//2)
+        img = cv2.copyMakeBorder(img,pad[0],pad[2],pad[1],pad[3],cv2.BORDER_CONSTANT,0)
+        return img,(pad[0],pad[1])
 
+    def __getitem__(self,idx):
+        path = self.imgs[idx]
+        name = os.path.splitext(os.path.split(path)[-1])[0]
+        img = cv2.imread(path)
+        ##print(img.shape)
+        img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+        h,w = img.shape[:2]             
+        #validation set
+        img,pad = self.pad_to_square(img)
+        img = resize(img,(self.size,self.size))
+        data = self.img_to_tensor(img)
+        info ={'size':(h,w),'img_id':name,'pad':pad}
+        return data,info
                 
 
 

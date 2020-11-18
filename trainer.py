@@ -10,7 +10,7 @@ import json
 
 from utils import Logger
 from utils import non_maximum_supression as nms
-from utils import cal_tp_per_item,ap_per_class
+from utils import cal_tp_per_item,ap_per_class,write_to_csv
 tosave = ['mAP']
 plot = [0.5,0.75] 
 thresholds = np.around(np.arange(0.5,0.76,0.05),2)
@@ -18,6 +18,7 @@ thresholds = np.around(np.arange(0.5,0.76,0.05),2)
 class Trainer:
     def __init__(self,cfg,datasets,net,loss,epoch):
         self.cfg = cfg
+        self.mode = cfg.mode
         if 'train' in datasets:
             self.trainset = datasets['train']
             self.valset = datasets['val']
@@ -33,8 +34,15 @@ class Trainer:
         self.checkpoints = os.path.join(cfg.checkpoint,name)
         self.device = cfg.device
         self.net = self.net
-        self.optimizer = optim.SGD(self.net.parameters(),lr=cfg.lr,weight_decay=cfg.weight_decay,momentum=cfg.momentum)
-        self.lr_sheudler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,mode='min', factor=cfg.lr_factor, threshold=0.0001,patience=cfg.patience,min_lr=cfg.min_lr)
+        if self.mode=='train':
+            self.optimizer = optim.SGD(self.net.parameters(),lr=cfg.lr,weight_decay=cfg.weight_decay,momentum=cfg.momentum)
+            self.lr_sheudler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,mode='min', factor=cfg.lr_factor, threshold=0.0001,patience=cfg.patience,min_lr=cfg.min_lr)
+            self.save_every_k_epoch = cfg.save_every_k_epoch #-1 for not save and validate
+            self.val_every_k_epoch = cfg.val_every_k_epoch
+            self.upadte_grad_every_k_batch = 1
+            self.save_pred = False
+            self.adjust_lr = cfg.adjust_lr
+
         if not(os.path.exists(self.checkpoints)):
             os.mkdir(self.checkpoints)
         self.predictions = os.path.join(self.checkpoints,'pred')
@@ -49,9 +57,7 @@ class Trainer:
             os.mkdir(log_dir)
         self.logger = Logger(log_dir)
         torch.cuda.empty_cache()
-        self.save_every_k_epoch = cfg.save_every_k_epoch #-1 for not save and validate
-        self.val_every_k_epoch = cfg.val_every_k_epoch
-        self.upadte_grad_every_k_batch = 1
+        
 
         self.best_mAP = 0
         self.best_mAP_epoch = 0
@@ -63,8 +69,7 @@ class Trainer:
         self.alpha = 0.95 #for update moving Avg
         self.nms_threshold = cfg.nms_threshold
         self.conf_threshold = cfg.dc_threshold
-        self.save_pred = False
-        self.adjust_lr = cfg.adjust_lr
+        
         #load from epoch if required
         if start:            
             if start==-1:
@@ -105,7 +110,7 @@ class Trainer:
             print('load:'+model_path)
             info = torch.load(model_path)
             self.net.load_state_dict(info['net'])
-            if not(self.adjust_lr):
+            if (self.mode=='train') and not(self.adjust_lr):
                 self.optimizer.load_state_dict(info['optimizer'])#might have bugs about device
                 for state in self.optimizer.state.values():
                     for k, v in state.items():
@@ -270,7 +275,7 @@ class Trainer:
         return metrics
     def test(self):
         self.net.eval()
-        res = {}
+        res = []
         with torch.no_grad():
             for data in tqdm(self.testset):
                 inputs,info = data
@@ -278,21 +283,22 @@ class Trainer:
                 size = inputs.shape[-2:]
                 pds = self.loss(outs,size=size,infer=True)
                 nB = pds.shape[0]
+                #print(info,nB)
                 for b in range(nB):
                     pred = pds[b].view(-1,self.cfg.cls_num+5)
                     name = info['img_id'][b]
-                    tsize = info['size'][b]
-                    pad = info['pad'][b]
+                    tsize = (info['size'][0][b],info['size'][1][b])
+                    pad = (info['pad'][0][b],info['pad'][1][b])
                     pred[:,:4]*=max(tsize)
                     pred[:,0] -= pad[1]
-                    pred[:,1] -= pad[0]
-                    pred_nms = pred[pred[:,-1]>=0.5,:]               
-                    #pred_nms = nms(pred,self.conf_threshold, self.nms_threshold)
+                    pred[:,1] -= pad[0]               
+                    pred_nms = nms(pred,self.conf_threshold, self.nms_threshold)
                     pds_ = list(pred_nms.cpu().numpy().astype(float))
                     pds_ = [list(pd) for pd in pds_]
-                    res[name] = pds_
+                    res.append({'image_id':name,'PredictionString':pds_})
         self.logMemoryUsage()
-        json.dump(res,open(os.path.join(self.predictions,'pred_test.json'),'w'))
+        write_to_csv(res)
+        return res
 
         
 

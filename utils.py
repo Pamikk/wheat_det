@@ -5,6 +5,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 import os 
 import json
+import pandas as pd
 from tqdm import tqdm
 voc_classes= {'__background__':0, 'aeroplane':1, 'bicycle':2, 
           'bird':3, 'boat':4, 'bottle':5,'bus':6, 'car':7,
@@ -235,7 +236,16 @@ def ap_per_class(tp, conf,n_gt):
     ap = tp.sum()/(n_gt+n_p-tp.sum())
     return p,r,ap
 
-
+def write_to_csv(res,fname="submission.csv"):
+    cols = ["image_id","PredictionString"]
+    for data in res:
+        tmp = data['PredictionString']
+        bboxes = []
+        for bbox in tmp:
+             bboxes.append(f"{bbox[-1]} {bbox[0]-bbox[2]/2} {bbox[1]-bbox[3]/2} {bbox[2]} {bbox[3]}")
+        data['PredictionString']= ' '.join(bboxes)
+    test_df = pd.DataFrame(res, columns=['image_id', 'PredictionString'])
+    test_df.to_csv('submission.csv', index=False)
 def cal_tp_per_item(pds,gts,threshold=0.5):
     assert (len(pds.shape)>1) and (len(gts.shape)>1)
     pds = pds.cpu().numpy()

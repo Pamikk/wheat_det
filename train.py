@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 ###files
 from config import Config as cfg
 from dataProcessing import VOC_dataset as dataset
+from dataProcessing import Testset
 from models.network import NetAPI
 from trainer import Trainer
 import warnings
@@ -22,7 +23,7 @@ def main(args,cfgs):
     train_set = dataset(config)
     val_set = dataset(val_cfg,mode='val')
     trainval_set = dataset(trainval_cfg,mode='val')
-    test_set = dataset(test_cfg,mode='test')
+    test_set = Testset(test_cfg,mode='test')
     train_loader = DataLoader(train_set,batch_size=args.bs,shuffle=True,pin_memory=False,collate_fn=train_set.collate_fn)
     val_loader = DataLoader(val_set,batch_size=val_cfg.bs,shuffle=False,pin_memory=False,collate_fn=val_set.collate_fn)
     trainval_loader = DataLoader(trainval_set,batch_size=trainval_cfg.bs,shuffle=False,pin_memory=False,collate_fn=val_set.collate_fn)

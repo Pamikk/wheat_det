@@ -3,9 +3,7 @@ import csv
 import os
 import cv2
 import random
-import pandas as pd
-
-    
+   
 def train_val_split(data,ratio=0.2,num=200):
     train_gts={}
     val_gts={}

@@ -46,17 +46,17 @@ def make_grid_mesh_xy(grid_size,device='cuda'):
 class YOLOLoss(nn.Module):
     def __init__(self,cfg=None):
         super(YOLOLoss,self).__init__()
-        self.object_scale = cfg.obj_scale
-        self.noobject_scale = cfg.noobj_scale
-        self.cls_num = cfg.cls_num
-        self.ignore_threshold = cfg.ignore_threshold
+        if cfg.mode=="train":
+            self.object_scale = cfg.obj_scale
+            self.noobject_scale = cfg.noobj_scale
+            self.ignore_threshold = cfg.ignore_threshold
+            self.match_threshold = cfg.match_threshold
+        self.cls_num = cfg.cls_num        
         self.device= 'cuda'
-        self.target_num = 120
         anchors = [cfg.anchors[i] for i in cfg.anchor_ind]
         self.num_anchors = len(anchors)
         self.anchors = np.array(anchors).reshape(-1,2)
-        self.channel_num = self.num_anchors*(self.cls_num+5)
-        self.match_threshold = cfg.match_threshold
+        self.channel_num = self.num_anchors*(self.cls_num+5)        
     def build_target(self,pds,gts):
         self.device ='cuda' if pds.is_cuda else 'cpu'
         nB,nA,nH,nW,_ = pds.shape
