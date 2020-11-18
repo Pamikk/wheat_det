@@ -133,7 +133,7 @@ class YOLO_SPP(YOLO):
 class YOLO_SPP_GN(YOLO_SPP):
     def __init__(self,cfg):
         super(YOLO_SPP_GN,self).__init__(cfg)
-        self.encoders = Darknet_GN()
+        self.encoders = Darknet_GN('')
     def make_prediction_SPP(self,out_channel,block,channel):
         upsample = nn.Identity()
         decoders=[block(self.in_channel,channel)]

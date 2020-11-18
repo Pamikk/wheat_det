@@ -219,8 +219,8 @@ class Darknet(nn.Module):
                 assert len(stack)==0
         print("finish load from path:",self.path)
 class Darknet_GN(Darknet):
-    def __init__(self):
-        super(Darknet_GN,self).__init__()
+    def __init__(self,path):
+        super(Darknet_GN,self).__init__(path)
         self.bn1 = nn.GroupNorm(8,32)
     def make_encoders(self,channel,block,depth=1,downsample=False):
         blocks = []
