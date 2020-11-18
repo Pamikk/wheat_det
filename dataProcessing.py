@@ -37,7 +37,7 @@ def valid_scale(src,vs):
     img = cv2.cvtColor(src,cv2.COLOR_RGB2HSV).astype(np.float)
     img[:,:,2] *= (1+vs)
     img[:,:,2] = np.clip(img[:,:,2],0,255)
-    img = cv2.cvtColor(img.astype(np.int8),cv2.COLOR_HSV2RGB).astype(np.float)
+    img = cv2.cvtColor(img.astype('uint8'),cv2.COLOR_HSV2RGB).astype(np.float)
     return img
 def resize(src,tsize):
     dst = cv2.resize(src,(tsize[1],tsize[0]),interpolation=cv2.INTER_LINEAR)
