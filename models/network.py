@@ -3,15 +3,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 import os
 
-from .backbone import ResNet,conv1x1,conv3x3,Darknet 
+from .backbone import ResNet,conv1x1,conv3x3,Darknet,Darknet_GN 
 def init_weights(m):
     if type(m) == nn.Conv2d:
         torch.nn.init.kaiming_normal_(m.weight.data)
     elif type(m) == nn.BatchNorm2d:
         torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
         torch.nn.init.constant_(m.bias.data, 0.0)
-def NetAPI(cfg,net,init=True):
-    networks = {'yolo':YOLO,'yolo_spp':YOLO_SPP}
+def NetAPI(cfg,net,init=False):
+    networks = {'yolo':YOLO,'yolo_spp':YOLO_SPP,'yolo_spp_gn':YOLO_SPP_GN}
     network = networks[net](cfg)
     if init:
         network.initialization()
@@ -130,8 +130,18 @@ class YOLO_SPP(YOLO):
             outs.append(out)
             y = [feats.pop(0)]
         return outs
-
-    
+class YOLO_SPP_GN(YOLO_SPP):
+    def __init__(self,cfg):
+        super(YOLO_SPP_GN,self).__init__(cfg)
+        self.encoders = Darknet_GN()
+    def make_prediction_SPP(self,out_channel,block,channel):
+        upsample = nn.Identity()
+        decoders=[block(self.in_channel,channel)]
+        decoders.append(nn.Sequential(conv1x1(channel*block.multiple,channel),nn.GroupNorm(channel//4,channel),self.relu))        
+        pred = nn.Sequential(conv3x3(channel,channel*block.multiple),nn.BatchNorm2d(channel*block.multiple//4,channel*block.multiple),self.relu,
+                conv1x1(channel*block.multiple,out_channel,bias=True))
+        self.in_channel = channel
+        return nn.ModuleList([upsample,nn.Sequential(*decoders),pred])    
 
 
 

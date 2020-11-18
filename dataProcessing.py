@@ -109,6 +109,8 @@ def color_normalize(img,mean):
         img /= 255
     img -= np.array(mean)/255
     return img
+def add_mosiaic(src,ms):
+    col = src.
 
 class VOC_dataset(data.Dataset):
     def __init__(self,cfg,mode='train'):
@@ -121,7 +123,10 @@ class VOC_dataset(data.Dataset):
         self.accm_batch = 0
         self.size = random.choice(cfg.sizes)
     def __len__(self):
-        return len(self.imgs)
+        if self.mode=='train':
+            return 2*len(self.imgs)
+        else:
+            return len(self.imgs)
 
     def img_to_tensor(self,img):
         data = torch.tensor(np.transpose(img,[2,0,1]),dtype=torch.float)
@@ -159,33 +164,41 @@ class VOC_dataset(data.Dataset):
         return img,(pad[0],pad[1])
 
     def __getitem__(self,idx):
-        name = self.imgs[idx]
+        if self.mode=='train':
+            name = self.imgs[idx//2]
+        else:
+            name = self.imgs[idx]
         anno = self.annos[name]
         img = cv2.imread(os.path.join(self.img_path,name+'.jpg'))
         ##print(img.shape)
         img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
         h,w = img.shape[:2]        
         labels = self.gen_gts(anno)
-        if self.mode=='train':
+        if (self.mode=='train') and (idx%2==0):
             aug = []
             if (random.randint(0,1)==1) and self.cfg.flip:
                 img,labels = flip(img,labels)
                 aug.append('flip')
-            if (random.randint(0,1)==1) and self.cfg.trans:
-                img,labels = translate(img,labels,self.cfg.trans)
-                aug.append('trans')
-            if (random.randint(0,1)==1) and self.cfg.crop:
-                img,labels = crop(img,labels,self.cfg.crop)
-                aug.append('crop')
             if (random.randint(0,1)==1) and self.cfg.rot:
                 ang = random.uniform(-self.cfg.rot,self.cfg.rot)
                 scale = random.uniform(1-self.cfg.scale,1+self.cfg.scale)
                 img,labels = rotate(img,labels,ang,scale)
                 aug.append('rotate')
+            if (random.randint(0,1)==1) and self.cfg.trans:
+                img,labels = translate(img,labels,self.cfg.trans)
+                aug.append('trans')
+            if (random.randint(0,1)==1) and self.cfg.crop:
+                img,labels = crop(img,labels,self.cfg.crop)
+                aug.append('crop')            
+            if (random.randint(0,1)==1) and self.cfg.valid_scale:
+                vs = random.uniform(-self.cfg.valid_scale,self.cfg.valid_scale)
+                img= valid_scale(img,vs)
+                aug.append('change_valid')
+            
             img,pad = self.pad_to_square(img)
             size = img.shape[0]
-            labels[:,ls]+=pad[1]
-            labels[:,ls+1]+=pad[0]
+            labels[:,ls] += pad[1]
+            labels[:,ls+1] += pad[0]
             data = self.img_to_tensor(img)
             labels = self.normalize_gts(labels,size,aug)
             return data,labels      

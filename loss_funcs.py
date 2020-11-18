@@ -192,19 +192,6 @@ class YOLOLoss(nn.Module):
             total = loss_obj
         res['all'] = total.item()
         return res,total
-class YOLOLoss_iou(YOLOLoss):
-    def cal_bbox_loss(self,pds,tbboxes,obj_mask,res):
-        pd_bboxes = pds[-1]
-        if obj_mask.float().max()>0:#avoid no gt_objs
-            ious,gous = generalized_iou(pd_bboxes[obj_mask],tbboxes[obj_mask])
-            loss_iou = 1 - ious.mean()
-            loss_gou = 1 - gous.mean()
-        else:
-            loss_iou = torch.tensor(0.0,dtype=torch.float,device=self.device)
-            loss_gou = torch.tensor(0.0,dtype=torch.float,device=self.device)
-        res['iou'] = loss_iou.item()
-        res['gou'] = loss_gou.item()
-        return loss_iou,res
 class YOLOLoss_gou(YOLOLoss):
     def cal_bbox_loss(self,pds,tbboxes,obj_mask,res):
         pd_bboxes = pds[-1]
@@ -219,30 +206,11 @@ class YOLOLoss_gou(YOLOLoss):
         res['gou'] = loss_gou.item()
         return loss_gou,res
 class YOLOLoss_com(YOLOLoss):
-    def cal_bbox_loss(self,pds,tbboxes,obj_mask,res):
-        xs,ys,ws,hs,pd_bboxes = pds
-        txs,tys,tws,ths = tbboxes.permute(4,0,1,2,3).contiguous()
-        loss_x = mse_loss(xs[obj_mask],txs[obj_mask]-txs[obj_mask].floor())
-        loss_y = mse_loss(ys[obj_mask],tys[obj_mask]-tys[obj_mask].floor())
-        loss_xy = loss_x + loss_y
-        loss_w = mse_loss(ws[obj_mask],torch.log(tws[obj_mask]/self.anchors_w))
-        loss_h = mse_loss(hs[obj_mask],torch.log(ths[obj_mask]/self.anchors_h))
-        loss_wh = loss_w + loss_h
-        res['wh']=loss_wh.item()
-        res['xy']=loss_xy.item()
-        loss_bbox = loss_xy+loss_wh 
-        if torch.isnan(loss_bbox):
-            exit()
-        if obj_mask.float().max()>0:#avoid no gt_objs
-            ious,gous = generalized_iou(pd_bboxes[obj_mask],tbboxes[obj_mask])
-            loss_iou = 1 - ious.mean()
-            loss_gou = 1 - gous.mean()
-        else:
-            loss_iou = torch.tensor(0.0,dtype=torch.float,device=self.device)
-            loss_gou = torch.tensor(0.0,dtype=torch.float,device=self.device)
-        res['iou'] = loss_iou.item()
-        res['gou'] = loss_gou.item()
-        return loss_gou+loss_bbox,res
+    def cal_obj_loss(self,pds,target,obj_mask,res):
+        noobj_mask,tconf = target
+        loss_conf = dice_loss(pds,tconf)
+        res['conf'] = loss_conf.item()
+        return loss_conf,res
 
 class LossAPI(nn.Module):
     def __init__(self,cfg,loss):
