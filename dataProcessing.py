@@ -109,9 +109,21 @@ def color_normalize(img,mean):
         img /= 255
     img -= np.array(mean)/255
     return img
-def add_mosiaic(src,ms):
-    col = src.
-
+def add_mosaic(src,ms):
+    mnum = 4 #4x4
+    col = src.mean(0).mean(0)
+    h,w,_= src.size
+    patch = min(min(h,w)*ms,15)
+    step_h,step_w = h//(mnum+1),w//(mnum+1)
+    for i in range(1,mnum+1):
+        for j in range(1,mnum+1):
+            ps = int(random.uniform(1,patch))
+            xl = max(0,step_h*i-ps)
+            xu = min(h,step_h*i+ps)
+            yl = max(0,step_w*i-ps)
+            yu = min(w,step_w*i+ps)
+            src[xl:xu,yl:yu,:] = col
+    return src
 class VOC_dataset(data.Dataset):
     def __init__(self,cfg,mode='train'):
         self.img_path = cfg.img_path
@@ -194,6 +206,9 @@ class VOC_dataset(data.Dataset):
                 vs = random.uniform(-self.cfg.valid_scale,self.cfg.valid_scale)
                 img= valid_scale(img,vs)
                 aug.append('change_valid')
+            if (random.randint(0,1)==1) and self.cfg.mosaic:
+                img= add_mosaic(img,self.cfg.mosaic)
+                aug.append('add_mosaic')
             
             img,pad = self.pad_to_square(img)
             size = img.shape[0]

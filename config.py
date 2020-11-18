@@ -69,6 +69,7 @@ class Config:
             self.crop = 0.2
             self.scale = 0.2
             self.valid_scale = 0.25
+            self.mosaic = 0.01
             #train_setting
             self.lr = 0.01
             self.weight_decay=5e-4
