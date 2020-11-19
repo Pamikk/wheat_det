@@ -72,7 +72,7 @@ class Trainer:
         
         #load from epoch if required
         if start:            
-            if start==-1:
+            if start=='-1':
                 self.load_last_epoch()
             else:
                 self.load_epoch(start.strip())
