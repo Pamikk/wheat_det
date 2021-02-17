@@ -10,7 +10,6 @@ from dataProcessing import Testset
 from models.network import NetAPI
 from trainer import Trainer
 import warnings
-from loss_funcs import LossAPI
 from config import cal_anchors
 
 warnings.filterwarnings('ignore')
@@ -23,10 +22,14 @@ def main(args,cfgs):
     train_set = dataset(config)
     val_set = dataset(val_cfg,mode='val')
     trainval_set = dataset(trainval_cfg,mode='val')
-    train_loader = DataLoader(train_set,batch_size=args.bs,shuffle=True,pin_memory=False,collate_fn=train_set.collate_fn)
-    val_loader = DataLoader(val_set,batch_size=val_cfg.bs,shuffle=False,pin_memory=False,collate_fn=val_set.collate_fn)
-    trainval_loader = DataLoader(trainval_set,batch_size=trainval_cfg.bs,shuffle=False,pin_memory=False,collate_fn=val_set.collate_fn)
-    datasets = {'train':train_loader,'val':val_loader,'trainval':trainval_loader}
+    test_set = dataset(test_cfg,mode='test')
+    train_bs = config.bs if args.bs is None else args.bs
+    val_bs = val_cfg.bs if (args.bs is None) or (args.mode=='train') else args.bs   
+    train_loader = DataLoader(train_set,batch_size=train_bs,shuffle=True,pin_memory=False,collate_fn=train_set.collate_fn)
+    val_loader = DataLoader(val_set,batch_size=val_bs,shuffle=False,pin_memory=False,collate_fn=val_set.collate_fn)
+    trainval_loader = DataLoader(trainval_set,batch_size=val_bs,shuffle=False,pin_memory=False,collate_fn=val_set.collate_fn)
+    test_loader = DataLoader(test_set,batch_size=val_bs,shuffle=False,pin_memory=False,collate_fn=test_set.collate_fn)
+    datasets = {'train':train_loader,'val':val_loader,'trainval':trainval_loader,'test':test_loader}
     config.exp_name = args.exp
     config.device = torch.device("cuda")
     torch.cuda.empty_cache()
@@ -34,18 +37,18 @@ def main(args,cfgs):
     if args.anchors:
         print('calculating new anchors')
         config.anchors,_ = cal_anchors(config.sizes)
+        print(config.anchors)
     if args.lr:
         config.lr = args.lr 
         config.adjust_lr = True
-    network = NetAPI(config,args.net)
-    loss = LossAPI(config,args.loss)
+    network = NetAPI(config,args.net,args.loss)
     torch.cuda.empty_cache()
-    det = Trainer(config,datasets,network,loss,(args.resume,args.epochs))
+    det = Trainer(config,datasets,network,(args.resume,args.epochs))
     if args.mode=='val':
         #metrics = det.validate(det.start-1,mode='val')        
         #det.logger.write_metrics(det.start-1,metrics,[])
         metrics = det.validate(det.start-1,mode='train')
-        det.logger.write_metrics(det.start-1,metrics,[],mode='Trainval')
+        #det.logger.write_metrics(det.start-1,metrics,[],mode='Trainval')
     elif args.mode=='test':
         det.test()
     else:

@@ -4,7 +4,7 @@ import random
 import json
 
 from stats import kmeans
-anchors =[[20.775, 19.732], [27.184, 22.13], [35.381, 32.168], [39.331, 36.391], [44.967, 39.826], [50.667, 46.979], [59.47, 53.225], [74.047, 72.927], [88.779, 95.09]]
+anchors =[[0.038, 0.036], [0.059, 0.048], [0.066, 0.063], [0.066, 0.071], [0.092, 0.079], [0.102, 0.085], [0.105, 0.105], [0.146, 0.138], [0.186, 0.168]]
 #anchors = 
 path ='data/train.json' #annotation path for anchor calculation
 def cal_anchors(sizes=None,num=9):
@@ -26,7 +26,7 @@ def cal_anchors(sizes=None,num=9):
                 scale = t
             else:
                 scale = sizes
-            allb.append((bw/t*scale,bh/t*scale))
+            allb.append((bw/t,bh/t))
     km = kmeans(allb,k=num,max_iters=1000)
     km.initialization()
     km.iter(0)
@@ -44,7 +44,7 @@ class Config:
         self.res = 50
         self.size = 1024
         self.multiscale = 1
-        self.sizes = list(range(self.size-32*self.multiscale,self.size+32*self.multiscale+1,32)) 
+        self.sizes = list(range(self.size-32*self.multiscale,self.size+1,32)) 
         self.nms_threshold = 0.5
         self.dc_threshold = 0.95
         
@@ -53,40 +53,45 @@ class Config:
         #self.anchors = [[0.26533935,0.33382434],[0.66550966,0.56042827],[0.0880948,0.11774004]] #w,h normalized by max size
         #self.anchors = [[0.76822971,0.57259308],[0.39598597,0.47268035],[0.20632625,0.26720238],[0.07779112,0.10330848]]
         self.anchors= anchors  
-        self.anchor_divide=[(6,7,8),(2,3,4,5),(0,1)]
+        self.anchor_divide=[(6,7,8),(3,4,5),(0,1,2)]
         self.anchor_num = len(self.anchors)
         
-        self.bs = 4       
+        self.bs = 8       
         self.pre_trained_path = '../network_weights'
-        self.mode=mode
+        self.augment = False
+        #train_setting
+        self.lr = 0.001
+        self.weight_decay=5e-4
+        self.momentum = 0.9
+        #lr_scheduler
+        self.min_lr = 5e-5
+        self.lr_factor = 0.25
+        self.patience = 12
+        #exp_setting
+        self.save_every_k_epoch = 15
+        self.val_every_k_epoch = 10
+        self.adjust_lr = False
+        #loss hyp
+        self.obj_scale = 2
+        self.noobj_scale = 5
+        self.cls_scale = 1
+        self.reg_scale = 1#for giou
+        self.ignore_threshold = 0.5
+        self.match_threshold = 0#regard as match above this threshold
+        self.base_epochs = [-1]#base epochs with large learning rate,adjust lr_facter with 0.1
         if mode=='train':
             self.file=f'./data/train.json'
-            self.bs = 4 # batch size
-            self.flip = True
+            self.bs = 32 # batch size
+            
             #augmentation parameter
-            self.rot = 30
-            self.trans = 0.2
-            self.crop = 0.2
+            self.augment = True
+            self.flip = True
+            self.rot = 25
+            self.crop = 0.3
+            self.trans = .3
             self.scale = 0.2
             self.valid_scale = 0.25
             self.mosaic = 0.01
-            #train_setting
-            self.lr = 0.01
-            self.weight_decay=5e-4
-            self.momentum = 0.9
-            #lr_scheduler
-            self.min_lr = 2e-5
-            self.lr_factor = 0.2
-            self.patience = 10
-            #exp_setting
-            self.save_every_k_epoch = 10
-            self.val_every_k_epoch = 10
-            self.adjust_lr = False
-            #loss hyp
-            self.obj_scale = 2
-            self.noobj_scale = 10
-            self.ignore_threshold = 0.7
-            self.match_threshold = 0.0001#
 
         elif mode=='val':
             self.size = 1024

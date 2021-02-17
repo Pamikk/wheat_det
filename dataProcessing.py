@@ -284,7 +284,7 @@ class Testset(data.Dataset):
         diff2 = abs(w-ts)
         pad = (diff1//2,diff2//2,diff1-diff1//2,diff2-diff2//2)
         img = cv2.copyMakeBorder(img,pad[0],pad[2],pad[1],pad[3],cv2.BORDER_CONSTANT,0)
-        return img,(pad[0],pad[1])
+        return img,(diff1,diff2)
 
     def __getitem__(self,idx):
         path = self.imgs[idx]
