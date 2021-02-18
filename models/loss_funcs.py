@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch
 import numpy as np
 
-from .utils import iou_wo_center,generalized_iou,build_targets
+from .utils import iou_wo_center,generalized_iou
 #Functional Utils
 mse_loss = nn.MSELoss()
 bce_loss = nn.BCELoss()
