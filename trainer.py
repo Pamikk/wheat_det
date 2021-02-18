@@ -132,7 +132,7 @@ class Trainer:
             print('no such model at:',model_path)
             exit()
     def _updateRunningLoss(self,loss,epoch):
-        if self.bestMovingLoss<loss:
+        if self.bestMovingLoss>loss:
             self.bestMovingLoss = loss
             self.bestMovingLossEpoch = epoch
             self.save_epoch('bestm',epoch)
