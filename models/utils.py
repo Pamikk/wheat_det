@@ -102,8 +102,8 @@ def cal_gious_matrix(bbox1,bbox2):
 
     ious = inter/union
     gious = iou-(cover-union)/cover
-    ious[ious!=ious] = torch.tensor(0.0,device='cuda') #avoid nans
-    gous[gous!=gous] = torch.tensor(0.0,device='cuda') #avoid nans 
+    ious[ious!=ious] = torch.tensor(0.0,device=bbox1.device) #avoid nans
+    gous[gous!=gous] = torch.tensor(0.0,device=bbox1.device) #avoid nans 
     return ious,gious
 def iou_wt_center(bbox1,bbox2):
     #only for torch, return a vector nx1
@@ -138,7 +138,7 @@ def iou_wt_center(bbox1,bbox2):
     area2 = bbox2[:,2]*bbox2[:,3]
     union = area1+area2 - inter
     ious = inter/union
-    ious[ious!=ious] = torch.tensor(0.0,device='cuda')
+    ious[ious!=ious] = torch.tensor(0.0,device=device=bbox1.device)
     return ious
 def to_cpu(tensor):
     return tensor.detach().cpu()

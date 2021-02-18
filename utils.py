@@ -200,7 +200,7 @@ def iou_wt_center_np(bbox1,bbox2):
     area2 = ((ymax2-ymin2)*(xmax2-xmin2)).reshape(1,-1)
     union = area1+area2 - inter
     ious = inter/union
-    ious[ious!=ious] = torch.tensor(0.0,device=bbox1.device)
+    ious[ious!=ious] = 0.0
     return ious
 
 def ap_per_class(tp, conf,n_gt):
