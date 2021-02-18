@@ -72,7 +72,7 @@ class YOLOLoss(nn.Module):
         if nGts==0:
             return obj_mask,noobj_mask,tbboxes,obj_mask.float()
         #convert target
-        gt_boxes = gts[:,2:6]
+        gt_boxes = gts[:,1:5]
         gws = gt_boxes[:,2]
         ghs = gt_boxes[:,3]
 
@@ -92,7 +92,6 @@ class YOLOLoss(nn.Module):
         '''
         
         batch = gts[:,0].long()
-        labels = gts[:,1].long()
         gxs,gys = gt_boxes[:,0]*nW,gt_boxes[:,1]*nH
         gis,gjs = gxs.long(),gys.long()
         #calculate bbox ious with anchors      
