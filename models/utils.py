@@ -20,7 +20,7 @@ def iou_wo_center(w1,h1,w2,h2):
     inter = torch.min(w1,w2)*torch.min(h1,h2)
     union = w1*h1 + w2*h2 - inter
     ious = inter/union
-    ious[ious!=ious] = torch.tensor(0.0,device='cuda') #avoid nans
+    ious[ious!=ious] = torch.tensor(0.0,device=w1.device) #avoid nans
     return ious
 def generalized_iou(bbox1,bbox2):
     #return shape nx1

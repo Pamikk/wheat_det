@@ -49,14 +49,7 @@ class Logger(object):
         self.write_line2file('val',tmp)
         writer.close()
 
-def iou_wo_center(w1,h1,w2,h2):
-    #assuming at the same center
-    #return a vector nx1
-    inter = torch.min(w1,w2)*torch.min(h1,h2)
-    union = w1*h1 + w2*h2 - inter
-    ious = inter/union
-    ious[ious!=ious] = torch.tensor(0.0) #avoid nans
-    return ious
+
 def generalized_iou(bbox1,bbox2):
     #return shape nx1
     bbox1 = bbox1.view(-1,4)
@@ -137,8 +130,8 @@ def cal_gious_matrix(bbox1,bbox2):
 
     ious = inter/union
     gious = iou-(cover-union)/cover
-    ious[ious!=ious] = torch.tensor(0.0) #avoid nans
-    gous[gous!=gous] = torch.tensor(0.0) #avoid nans 
+    ious[ious!=ious] = torch.tensor(0.0,device=bbox1.device) #avoid nans
+    gous[gous!=gous] = torch.tensor(0.0,device=bbox1.device)) #avoid nans 
     return ious,gious
 def iou_wt_center(bbox1,bbox2):
     #only for torch, return a vector nx1
@@ -173,7 +166,7 @@ def iou_wt_center(bbox1,bbox2):
     area2 = bbox2[:,2]*bbox2[:,3]
     union = area1+area2 - inter
     ious = inter/union
-    ious[ious!=ious] = torch.tensor(0.0)
+    ious[ious!=ious] = torch.tensor(0.0,device=bbox1.device))
     return ious
 def iou_wt_center_np(bbox1,bbox2):
     #in numpy,only for evaluation,return a matrix m x n
@@ -207,7 +200,7 @@ def iou_wt_center_np(bbox1,bbox2):
     area2 = ((ymax2-ymin2)*(xmax2-xmin2)).reshape(1,-1)
     union = area1+area2 - inter
     ious = inter/union
-    ious[ious!=ious] = 0
+    ious[ious!=ious] = torch.tensor(0.0,device=bbox1.device)
     return ious
 
 def ap_per_class(tp, conf,n_gt):
