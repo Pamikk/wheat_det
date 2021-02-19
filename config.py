@@ -66,7 +66,7 @@ class Config:
         #lr_scheduler
         self.min_lr = 5e-5
         self.lr_factor = 0.25
-        self.patience = 12
+        self.patience = 10
         #exp_setting
         self.save_every_k_epoch = 15
         self.val_every_k_epoch = 10
@@ -75,8 +75,8 @@ class Config:
         self.obj_scale = 2
         self.noobj_scale = 5
         self.cls_scale = 1
-        self.reg_scale = 1#for giou
-        self.ignore_threshold = 0.5
+        self.reg_scale = 2.5#for giou
+        self.ignore_threshold = 0.7
         self.match_threshold = 0#regard as match above this threshold
         self.base_epochs = [-1]#base epochs with large learning rate,adjust lr_facter with 0.1
         if mode=='train':
