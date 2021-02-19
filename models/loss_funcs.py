@@ -75,7 +75,7 @@ class YOLOLoss(nn.Module):
         gt_boxes = gts[:,1:5]
         gws = gt_boxes[:,2]
         ghs = gt_boxes[:,3]
-
+        gts_ = gts.clone()
         ious = torch.stack([iou_wo_center(gws,ghs,w,h) for (w,h) in self.scaled_anchors])
         vals, best_n = ious.max(0)
         ind = torch.arange(vals.shape[0],device=self.device)
@@ -86,11 +86,11 @@ class YOLOLoss(nn.Module):
         ind = ind[idx]
         #discard the gts below the match threshold and has been matched
         best_n =best_n[ind]
-        gts = gts[ind,:]
+        gts_ = gts[ind,:]
         gt_boxes = gt_boxes[ind,:]
         ious = ious[:,ind]
         
-        batch = gts[:,0].long()
+        batch = gts_[:,0].long()
         gxs,gys = gt_boxes[:,0]*nW,gt_boxes[:,1]*nH
         
         gis,gjs = gxs.long(),gys.long()
@@ -106,6 +106,7 @@ class YOLOLoss(nn.Module):
         
         tbboxes[batch,best_n,gjs,gis] = gt_boxes
         selected[batch,best_n,gjs,gis] = ind
+        
         
 
         
