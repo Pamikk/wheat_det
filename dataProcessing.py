@@ -186,6 +186,7 @@ class VOC_dataset(data.Dataset):
         img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
         h,w = img.shape[:2]        
         labels = self.gen_gts(anno)
+        print(name)
         if (self.mode=='train'):
             aug = []
             if (idx%2==1):

@@ -72,21 +72,22 @@ class YOLOLoss(nn.Module):
         if nGts==0:
             return obj_mask,noobj_mask,tbboxes,obj_mask.float()
         #convert target
-        gt_boxes = gts[:,1:5]
+        gts_ = gts.clone()
+        gt_boxes = gts_[:,1:5]
         gws = gt_boxes[:,2]
         ghs = gt_boxes[:,3]
-        gts_ = gts.clone()
+        
         ious = torch.stack([iou_wo_center(gws,ghs,w,h) for (w,h) in self.scaled_anchors])
         vals, best_n = ious.max(0)
         ind = torch.arange(vals.shape[0],device=self.device)
         ind = torch.argsort(vals)
         # so that obj with bigger iou will cover the smaller one 
         # useful for crowed scenes
-        idx = torch.argsort(gts[ind,-1],descending=True)#sort as match num,then gt has not matched will be matched first
+        idx = torch.argsort(gts_[ind,-1],descending=True)#sort as match num,then gt has not matched will be matched first
         ind = ind[idx]
         #discard the gts below the match threshold and has been matched
         best_n =best_n[ind]
-        gts_ = gts[ind,:]
+        gts_ = gts_[ind,:]
         gt_boxes = gt_boxes[ind,:]
         ious = ious[:,ind]
         
@@ -200,6 +201,7 @@ class YOLOLoss(nn.Module):
             total = self.reg_scale*loss_reg+loss_obj
         else:
             total = loss_obj
+        print(gts[:,-1])
         res['all'] = total.item()
         return res,total
 class YOLOLoss_iou(YOLOLoss):
@@ -218,6 +220,7 @@ class YOLOLoss_iou(YOLOLoss):
 class YOLOLoss_gou(YOLOLoss):
     def cal_bbox_loss(self,pds,tbboxes,obj_mask,res):
         pd_bboxes = pds[-1]
+        print(pd_bboxes[obj_mask],tbboxes[obj_mask])
         if obj_mask.float().max()>0:#avoid no gt_objs
             ious,gious = generalized_iou(pd_bboxes[obj_mask],tbboxes[obj_mask])
             loss_iou = 1 - ious.mean()
