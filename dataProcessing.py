@@ -186,7 +186,6 @@ class VOC_dataset(data.Dataset):
         img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
         h,w = img.shape[:2]        
         labels = self.gen_gts(anno)
-        print(name)
         if (self.mode=='train'):
             aug = []
             if (idx%2==1):
@@ -219,7 +218,8 @@ class VOC_dataset(data.Dataset):
             labels[:,ls+1] += pad[0]
             data = self.img_to_tensor(img)
             labels = self.normalize_gts(labels,size,aug)
-            return data,labels      
+            info ={'size':(h,w),'img_id':name,'pad':pad}
+            return data,labels,info      
         else:
             #validation set
             img,pad = self.pad_to_square(img)
@@ -241,7 +241,8 @@ class VOC_dataset(data.Dataset):
             info = stack_dicts(info)
             data = torch.stack(data)
         elif self.mode=='train':
-            data,labels = list(zip(*batch))
+            data,labels,info = list(zip(*batch))
+            info = stack_dicts(info)
             if self.accm_batch % 10 == 0:
                 self.size = random.choice(self.cfg.sizes)
             tsize = (self.size,self.size)
@@ -264,7 +265,7 @@ class VOC_dataset(data.Dataset):
         else:
             labels = torch.tensor(tmp,dtype=torch.float).reshape(-1,ls+5)
         if self.mode=='train':
-            return data,labels
+            return data,labels,info
         else:
             return data,labels,info
 class Testset(data.Dataset):
@@ -285,7 +286,7 @@ class Testset(data.Dataset):
         diff2 = abs(w-ts)
         pad = (diff1//2,diff2//2,diff1-diff1//2,diff2-diff2//2)
         img = cv2.copyMakeBorder(img,pad[0],pad[2],pad[1],pad[3],cv2.BORDER_CONSTANT,0)
-        return img,(diff1,diff2)
+        return img,(pad[0],pad[1])
 
     def __getitem__(self,idx):
         path = self.imgs[idx]

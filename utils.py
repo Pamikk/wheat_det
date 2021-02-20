@@ -13,6 +13,17 @@ voc_classes= {'__background__':0, 'aeroplane':1, 'bicycle':2,
             'horse':13,'motorbike':14, 'person':15, 'pottedplant':16,
             'sheep':17, 'sofa':18, 'train':19, 'tvmonitor':20}
 voc_indices = dict([(voc_classes[k]-1,k) for k in voc_classes])
+def draw_bboxes(img,bboxes,color,th=1):
+    img_ = img.copy()
+    for bbox in bboxes:
+        x,y,w,h = bbox
+        pt1 = (int(x-w/2),int(y-h/2))
+        pt2 = (int(x+w/2),int(y+h/2))
+        img_ =cv2.rectangle(img_,pt1,pt2,color,thickness = th)
+    return img_
+def tensor_to_img(src):
+    dst = np.transpose(src.cpu().numpy(),[1,2,0])
+    return dst
 class Logger(object):
     def __init__(self,log_dir):
         self.log_dir = log_dir

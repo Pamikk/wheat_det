@@ -58,7 +58,6 @@ class Config:
         
         self.bs = 8       
         self.pre_trained_path = '../network_weights'
-        self.augment = False
         #train_setting
         self.lr = 0.001
         self.weight_decay=5e-4
@@ -73,18 +72,17 @@ class Config:
         self.adjust_lr = False
         #loss hyp
         self.obj_scale = 2
-        self.noobj_scale = 5
+        self.noobj_scale = 10
         self.cls_scale = 1
-        self.reg_scale = 2.5#for giou
+        self.reg_scale = .5#for giou
         self.ignore_threshold = 0.5
         self.match_threshold = 0#regard as match above this threshold
         self.base_epochs = [-1]#base epochs with large learning rate,adjust lr_facter with 0.1
         if mode=='train':
-            self.file=f'./data/train.json'
+            self.file=f'./data/trainval.json'
             self.bs = 32 # batch size
             
             #augmentation parameter
-            self.augment = True
             self.flip = True
             self.rot = 25
             self.crop = 0.3
@@ -94,10 +92,10 @@ class Config:
             self.mosaic = 0.01
 
         elif mode=='val':
-            self.size = 1024
+            self.size = 512
             self.file = './data/val.json'
         elif mode=='trainval':
-            self.size = 1024
+            self.size = 512
             self.file = './data/trainval.json'
         elif mode=='test':
             self.file = './data/val.json'

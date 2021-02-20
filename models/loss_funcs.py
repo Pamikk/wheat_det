@@ -198,7 +198,7 @@ class YOLOLoss(nn.Module):
         nm = obj_mask.float().sum()                   
         if nm>0:
             loss_reg,res = self.cal_bbox_loss(pds_bbox,tbboxes,obj_mask,res)
-            total = self.reg_scale*loss_reg+loss_obj
+            total = nm*self.reg_scale*loss_reg+loss_obj
         else:
             total = loss_obj
         #print(gts[:,-1])
@@ -220,7 +220,6 @@ class YOLOLoss_iou(YOLOLoss):
 class YOLOLoss_gou(YOLOLoss):
     def cal_bbox_loss(self,pds,tbboxes,obj_mask,res):
         pd_bboxes = pds[-1]
-        print(pd_bboxes[obj_mask],tbboxes[obj_mask])
         if obj_mask.float().max()>0:#avoid no gt_objs
             ious,gious = generalized_iou(pd_bboxes[obj_mask],tbboxes[obj_mask])
             loss_iou = 1 - ious.mean()

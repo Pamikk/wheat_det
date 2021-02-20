@@ -306,7 +306,7 @@ class Trainer:
         return res
     def validate_random(self):
         self.net.eval()
-        self.valset.shuffle = True
+        self.valset.shuffle = False
         bs = self.valset.batch_size
         imgs = list(range(bs))
         preds = list(range(bs))
