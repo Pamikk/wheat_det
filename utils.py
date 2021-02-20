@@ -273,8 +273,7 @@ def cal_tp_per_item(pds,gts,threshold=0.5):
         if iou >=threshold  and selected[best] !=1:
             selected[best] = 1
             tps[i] = 1.0
-            m -=1
-    exit()          
+            m -=1         
     return [tps,scores]
     
 def xyhw2xy(boxes_):

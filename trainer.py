@@ -176,7 +176,7 @@ class Trainer:
             loss.backward()
             #solve gradient explosion problem caused by large learning rate or small batch size
             #nn.utils.clip_grad_value_(self.net.parameters(), clip_value=2.0) 
-            #nn.utils.clip_grad_norm_(self.net.parameters(),max_norm=2.0)
+            nn.utils.clip_grad_norm_(self.net.parameters(),max_norm=2.0)
             self.optimizer.step()
             self.optimizer.zero_grad()
             del loss
@@ -250,9 +250,6 @@ class Trainer:
                     name = info['img_id'][b]
                     size = info['size'][b]
                     pad = info['pad'][b]
-                    #pred[:,:4] *= max(size)
-                    #pred[:,0] -= pad[1]
-                    #pred[:,1] -= pad[0]
                     if save:
                         pds_ = list(pred.cpu().numpy().astype(float))
                         pds_ = [list(pd) for pd in pds_]
