@@ -201,7 +201,7 @@ class YOLOLoss(nn.Module):
             total = self.reg_scale*loss_reg+loss_obj
         else:
             total = loss_obj
-        print(gts[:,-1])
+        #print(gts[:,-1])
         res['all'] = total.item()
         return res,total
 class YOLOLoss_iou(YOLOLoss):
