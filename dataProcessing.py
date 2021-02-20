@@ -218,8 +218,7 @@ class VOC_dataset(data.Dataset):
             labels[:,ls+1] += pad[0]
             data = self.img_to_tensor(img)
             labels = self.normalize_gts(labels,size,aug)
-            info ={'size':(h,w),'img_id':name,'pad':pad}
-            return data,labels,info      
+            return data,labels    
         else:
             #validation set
             img,pad = self.pad_to_square(img)
@@ -241,8 +240,7 @@ class VOC_dataset(data.Dataset):
             info = stack_dicts(info)
             data = torch.stack(data)
         elif self.mode=='train':
-            data,labels,info = list(zip(*batch))
-            info = stack_dicts(info)
+            data,labels = list(zip(*batch))
             if self.accm_batch % 10 == 0:
                 self.size = random.choice(self.cfg.sizes)
             tsize = (self.size,self.size)
@@ -265,7 +263,7 @@ class VOC_dataset(data.Dataset):
         else:
             labels = torch.tensor(tmp,dtype=torch.float).reshape(-1,ls+5)
         if self.mode=='train':
-            return data,labels,info
+            return data,labels
         else:
             return data,labels,info
 class Testset(data.Dataset):
