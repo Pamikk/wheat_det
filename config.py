@@ -79,7 +79,7 @@ class Config:
         self.match_threshold = 0#regard as match above this threshold
         self.base_epochs = [-1]#base epochs with large learning rate,adjust lr_facter with 0.1
         if mode=='train':
-            self.file=f'./data/trainval.json'
+            self.file=f'./data/train.json'
             self.bs = 32 # batch size
             
             #augmentation parameter
