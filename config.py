@@ -53,7 +53,7 @@ class Config:
         #self.anchors = [[0.26533935,0.33382434],[0.66550966,0.56042827],[0.0880948,0.11774004]] #w,h normalized by max size
         #self.anchors = [[0.76822971,0.57259308],[0.39598597,0.47268035],[0.20632625,0.26720238],[0.07779112,0.10330848]]
         self.anchors= anchors  
-        self.anchor_divide=[(7,8),(4,5,6),(0,1,2,3)]
+        self.anchor_divide=[(6,7,8),(3,4,5),(0,1,2)]
         self.anchor_num = len(self.anchors)
         
         self.bs = 8       
