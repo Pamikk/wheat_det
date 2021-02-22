@@ -65,13 +65,13 @@ class Config:
         #lr_scheduler
         self.min_lr = 5e-5
         self.lr_factor = 0.25
-        self.patience = 10
+        self.patience = 8
         #exp_setting
         self.save_every_k_epoch = 15
         self.val_every_k_epoch = 10
         self.adjust_lr = False
         #loss hyp
-        self.obj_scale = 2
+        self.obj_scale = 4
         self.noobj_scale = 10
         self.cls_scale = 1
         self.reg_scale = .5#for giou
