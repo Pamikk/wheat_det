@@ -71,9 +71,9 @@ class Config:
         self.adjust_lr = False
         #loss hyp
         self.obj_scale = 2
-        self.noobj_scale = 10
+        self.noobj_scale = 5
         self.cls_scale = 1
-        self.reg_scale = .25#for giou
+        self.reg_scale = .5#for giou
         self.ignore_threshold = 0.5
         self.match_threshold = 0#regard as match above this threshold
         self.base_epochs = [-1]#base epochs with large learning rate,adjust lr_facter with 0.1
@@ -85,10 +85,10 @@ class Config:
             self.flip = True
             self.rot = 25
             self.crop = 0.25
-            self.trans = .25
+            self.trans = .2
             self.scale = 0.2
             self.valid_scale = 0.25
-            self.mosaic = 0.0005
+            self.mosaic = 0.011
 
         elif mode=='val':
             self.size = 512
