@@ -71,7 +71,7 @@ class Config:
         self.adjust_lr = False
         #loss hyp
         self.obj_scale = 2
-        self.noobj_scale = 5
+        self.noobj_scale = 10
         self.cls_scale = 1
         self.reg_scale = .25#for giou
         self.ignore_threshold = 0.7
@@ -88,7 +88,7 @@ class Config:
             self.trans = .3
             self.scale = 0.2
             self.valid_scale = 0.25
-            self.mosaic = 0.01
+            self.mosaic = 0.02
 
         elif mode=='val':
             self.size = 512
