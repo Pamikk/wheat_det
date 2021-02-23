@@ -8,7 +8,6 @@ anchors =[[0.038, 0.036], [0.059, 0.048], [0.066, 0.063], [0.066, 0.071], [0.092
 #anchors = 
 path ='data/train.json' #annotation path for anchor calculation
 def cal_anchors(sizes=None,num=9):
-    #As in https://github.com/eriklindernoren/PyTorch-YOLOv3
     # randomly scale as sizes if sizes is not None    
     annos = json.load(open(path,'r'))
     allb = []
@@ -53,7 +52,7 @@ class Config:
         #self.anchors = [[0.26533935,0.33382434],[0.66550966,0.56042827],[0.0880948,0.11774004]] #w,h normalized by max size
         #self.anchors = [[0.76822971,0.57259308],[0.39598597,0.47268035],[0.20632625,0.26720238],[0.07779112,0.10330848]]
         self.anchors= anchors  
-        self.anchor_divide=[(6,7,8),(3,4,5),(0,1,2)]
+        self.anchor_divide=[(7,8),(4,5,6),(0,1,2,3)]
         self.anchor_num = len(self.anchors)
         
         self.bs = 8       
@@ -71,10 +70,10 @@ class Config:
         self.val_every_k_epoch = 10
         self.adjust_lr = False
         #loss hyp
-        self.obj_scale = 4
-        self.noobj_scale = 10
+        self.obj_scale = 2
+        self.noobj_scale = 5
         self.cls_scale = 1
-        self.reg_scale = .5#for giou
+        self.reg_scale = .25#for giou
         self.ignore_threshold = 0.7
         self.match_threshold = 0#regard as match above this threshold
         self.base_epochs = [-1]#base epochs with large learning rate,adjust lr_facter with 0.1
