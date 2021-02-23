@@ -74,7 +74,7 @@ class Config:
         self.noobj_scale = 10
         self.cls_scale = 1
         self.reg_scale = .25#for giou
-        self.ignore_threshold = 0.7
+        self.ignore_threshold = 0.5
         self.match_threshold = 0#regard as match above this threshold
         self.base_epochs = [-1]#base epochs with large learning rate,adjust lr_facter with 0.1
         if mode=='train':
@@ -84,11 +84,11 @@ class Config:
             #augmentation parameter
             self.flip = True
             self.rot = 25
-            self.crop = 0.3
-            self.trans = .3
+            self.crop = 0.25
+            self.trans = .25
             self.scale = 0.2
             self.valid_scale = 0.25
-            self.mosaic = 0.02
+            self.mosaic = 0.0005
 
         elif mode=='val':
             self.size = 512
