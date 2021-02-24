@@ -5,7 +5,7 @@ import numpy as np
 from .utils import iou_wo_center,generalized_iou
 #Functional Utils
 mse_loss = nn.MSELoss()
-bce_loss = nn.BCELoss()
+bce_loss = nn.BCELoss(reduction='none')
 def dice_loss1d(pd,gt,threshold=0.5):
     assert pd.shape == gt.shape
     if gt.shape[0]==0:
@@ -164,12 +164,16 @@ class YOLOLoss(nn.Module):
     
     def cal_obj_loss(self,pds,target,obj_mask,res):
         noobj_mask,tconf = target
-        if obj_mask.sum()>0:
+        assert 0<pds.max()<=1 
+        assert 0<pds.min()<=1
+        assert 0<tconf.max()<=1 
+        assert 0<tconf.min()<=1
+        if obj_mask.float().sum()>0:
             loss_conf_obj = bce_loss(pds[obj_mask],tconf[obj_mask])
         else:
             loss_conf_obj = 0.0
         try:
-            if noobj_mask.cpu().numpy().sum()>0:
+            if noobj_mask.float().cpu().sum()>0:
                 loss_conf_noobj = bce_loss(pds[noobj_mask],tconf[noobj_mask])
             else:
                 loss_conf_noobj = 0.0
@@ -178,9 +182,12 @@ class YOLOLoss(nn.Module):
             print(pds.cpu().min(),pds.cpu().max())
             print(tconf.cpu().min(),tconf.cpu().max())
             print(noobj_mask.cpu().min(),noobj_mask.cpu().max())
-        loss_conf = self.noobject_scale*loss_conf_noobj+self.object_scale*loss_conf_obj
-        res['obj'] = loss_conf_obj.item()
-        res['conf'] = loss_conf.item()        
+        loss_conf = self.noobject_scale*loss_conf_noobj.sum()+self.object_scale*loss_conf_obj.sum()
+        '''if loss_conf.item()>10.0:
+            print(pds.cpu().min(),pds.cpu().max())
+            print(tconf.cpu().min(),tconf.cpu().max())'''
+        res['obj'] = loss_conf_obj.mean().item()
+        res['conf'] = loss_conf.item()/(obj_mask.float().sum()+noobj_mask.float().sum())        
         return loss_conf,res
     
     def forward(self,out,gts=None,size=None,infer=False):
@@ -199,10 +206,9 @@ class YOLOLoss(nn.Module):
         else:
             pds,obj_mask,tbboxes,tobj = self.get_pds_and_targets(pred,infer,gts)
         pds_bbox,pds_obj = pds
-         
+        loss_obj,res = self.cal_obj_loss(pds_obj,tobj,obj_mask,{}) 
         nm = obj_mask.float().sum()                   
-        if nm>0:
-            loss_obj,res = self.cal_obj_loss(pds_obj,tobj,obj_mask,{}) 
+        if nm>0:            
             loss_reg,res = self.cal_bbox_loss(pds_bbox,tbboxes,obj_mask,res)
             total = nm*self.reg_scale*loss_reg+loss_obj
         else:
