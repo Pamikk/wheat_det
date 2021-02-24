@@ -164,15 +164,20 @@ class YOLOLoss(nn.Module):
     
     def cal_obj_loss(self,pds,target,obj_mask,res):
         noobj_mask,tconf = target
-        
-          loss_conf_obj = bce_loss(pds[obj_mask],tconf[obj_mask])
-          try:
-              loss_conf_noobj = bce_loss(pds[noobj_mask],tconf[noobj_mask])
-          loss_conf = self.noobject_scale*loss_conf_noobj+self.object_scale*loss_conf_obj
-          res['obj'] = loss_conf_obj.item()
-          res['conf'] = loss_conf.item()
+        if obj_mask.sum()>0:
+            loss_conf_obj = bce_loss(pds[obj_mask],tconf[obj_mask])
+        else:
+            loss_conf_obj = 0.0
+        try:
+            if noobj_mask.sum()>0:
+                loss_conf_noobj = bce_loss(pds[noobj_mask],tconf[noobj_mask])
+            else:
+                loss_conf_noobj = 0.0
         except:
-          print(noobj_mask,tconf,obj_mask,pds)
+            print(noobj_mask,tconf,obj_mask,pds)
+        loss_conf = self.noobject_scale*loss_conf_noobj+self.object_scale*loss_conf_obj
+        res['obj'] = loss_conf_obj.item()
+        res['conf'] = loss_conf.item()        
         return loss_conf,res
     
     def forward(self,out,gts=None,size=None,infer=False):
@@ -191,9 +196,10 @@ class YOLOLoss(nn.Module):
         else:
             pds,obj_mask,tbboxes,tobj = self.get_pds_and_targets(pred,infer,gts)
         pds_bbox,pds_obj = pds
-        loss_obj,res = self.cal_obj_loss(pds_obj,tobj,obj_mask,{})  
+         
         nm = obj_mask.float().sum()                   
         if nm>0:
+            loss_obj,res = self.cal_obj_loss(pds_obj,tobj,obj_mask,{}) 
             loss_reg,res = self.cal_bbox_loss(pds_bbox,tbboxes,obj_mask,res)
             total = nm*self.reg_scale*loss_reg+loss_obj
         else:
