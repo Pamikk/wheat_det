@@ -71,7 +71,7 @@ class Config:
         self.adjust_lr = False
         #loss hyp
         self.obj_scale = 0.5
-        self.noobj_scale = 1.5
+        self.noobj_scale = 1
         self.cls_scale = 1
         self.reg_scale = .5#for giou
         self.ignore_threshold = 0.5
