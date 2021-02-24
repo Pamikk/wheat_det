@@ -164,13 +164,6 @@ class YOLOLoss(nn.Module):
     
     def cal_obj_loss(self,pds,target,obj_mask,res):
         noobj_mask,tconf = target
-        pds = torch.where(torch.isnan(pds), torch.zeros_like(pds), pds)
-        pds = torch.where(torch.isinf(pds), torch.zeros_like(pds), pds)
-        tconf = torch.where(torch.isnan(tconf), torch.zeros_like(tconf), tconf)
-        tconf = torch.where(torch.isinf(tconf), torch.zeros_like(tconf), tconf)
-        assert (obj_mask.shape == pds.shape)
-        assert (tconf.shape == pds.shape)
-        assert (noobj_mask.shape == pds.shape)
         loss_conf_obj = bce_loss(pds[obj_mask],tconf[obj_mask])
         loss_conf_noobj = bce_loss(pds[noobj_mask],tconf[noobj_mask])
         loss_conf = self.noobject_scale*loss_conf_noobj+self.object_scale*loss_conf_obj

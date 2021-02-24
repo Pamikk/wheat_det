@@ -34,7 +34,7 @@ def main(args,cfgs):
     config.device = torch.device("cuda")
     torch.cuda.empty_cache()
     #for reproducity
-    torch.manual_seed(2333)
+    torch.manual_seed(1234)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 

@@ -59,11 +59,11 @@ class Config:
         self.pre_trained_path = '../network_weights'
         #train_setting
         self.lr = 0.001
-        self.weight_decay=5e-4
+        self.weight_decay = 5e-4
         self.momentum = 0.9
         #lr_scheduler
-        self.min_lr = 5e-5
-        self.lr_factor = 0.25
+        self.min_lr = 5e-6
+        self.lr_factor = 0.2
         self.patience = 8
         #exp_setting
         self.save_every_k_epoch = 15
@@ -73,8 +73,8 @@ class Config:
         self.obj_scale = 2
         self.noobj_scale = 5
         self.cls_scale = 1
-        self.reg_scale = .5#for giou
-        self.ignore_threshold = 0.5
+        self.reg_scale = .25#for giou
+        self.ignore_threshold = 0.7
         self.match_threshold = 0#regard as match above this threshold
         self.base_epochs = [-1]#base epochs with large learning rate,adjust lr_facter with 0.1
         if mode=='train':
@@ -88,7 +88,7 @@ class Config:
             self.trans = .2
             self.scale = 0.2
             self.valid_scale = 0.25
-            self.mosaic = 0.011
+            self.mosaic = 0.01
 
         elif mode=='val':
             self.size = 512

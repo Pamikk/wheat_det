@@ -111,7 +111,6 @@ def color_normalize(img,mean):
     return img
 def add_mosaic(src,ms):
     mnum = 4 #4x4
-    col = src.mean(0).mean(0)
     h,w,_= src.shape
     patch = min(min(h,w)*ms,15)
     step_h,step_w = h//(mnum+1),w//(mnum+1)
@@ -122,7 +121,7 @@ def add_mosaic(src,ms):
             xu = min(h,step_h*i+ps)
             yl = max(0,step_w*i-ps)
             yu = min(w,step_w*i+ps)
-            src[xl:xu,yl:yu,:] = col
+            src[xl:xu,yl:yu,:] = ramdom.randint(0,255)
     return src
 class VOC_dataset(data.Dataset):
     def __init__(self,cfg,mode='train'):
@@ -216,6 +215,7 @@ class VOC_dataset(data.Dataset):
             size = img.shape[0]
             labels[:,ls] += pad[1]
             labels[:,ls+1] += pad[0]
+            img = resize(img,(self.cfg.size,self.cfg.size))
             data = self.img_to_tensor(img)
             labels = self.normalize_gts(labels,size,aug)
             return data,labels    
@@ -241,11 +241,7 @@ class VOC_dataset(data.Dataset):
             data = torch.stack(data)
         elif self.mode=='train':
             data,labels = list(zip(*batch))
-            if self.accm_batch % 10 == 0:
-                self.size = random.choice(self.cfg.sizes)
-            tsize = (self.size,self.size)
-            self.accm_batch += 1
-            data = torch.stack([F.interpolate(img.unsqueeze(0),tsize,mode='bilinear').squeeze(0) for img in data]) #multi-scale-training   
+            data = torch.stack(data)
         tmp =[]
                    
                 
