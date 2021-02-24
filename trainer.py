@@ -159,11 +159,12 @@ class Trainer:
         else:
             return False
     def train_one_epoch(self):
-        self.optimizer.zero_grad()
+        
         running_loss ={'xy':0.0,'wh':0.0,'conf':0.0,'cls':0.0,'obj':0.0,'all':0.0,'iou':0.0,'giou':0.0}
         self.net.train()
         n = len(self.trainset)
         for data in tqdm(self.trainset):
+            self.optimizer.zero_grad()
             inputs,labels = data
             labels = labels.to(self.device).float()
             display,loss = self.net(inputs.to(self.device).float(),gts=labels)           
@@ -175,10 +176,9 @@ class Trainer:
                     running_loss[k] += display[k]/n
             loss.backward()
             #solve gradient explosion problem caused by large learning rate or small batch size
-            #nn.utils.clip_grad_value_(self.net.parameters(), clip_value=2.0) 
-            nn.utils.clip_grad_norm_(self.net.parameters(),max_norm=2.0)
+            nn.utils.clip_grad_value_(self.net.parameters(), clip_value=2.0) 
+            #nn.utils.clip_grad_norm_(self.net.parameters(),max_norm=2.0)
             self.optimizer.step()
-            self.optimizer.zero_grad()
             del loss
         self.logMemoryUsage()
         print(f'#Gt not matched:{self.net.loss.not_match}')

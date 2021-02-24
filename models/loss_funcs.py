@@ -164,11 +164,15 @@ class YOLOLoss(nn.Module):
     
     def cal_obj_loss(self,pds,target,obj_mask,res):
         noobj_mask,tconf = target
-        loss_conf_obj = bce_loss(pds[obj_mask],tconf[obj_mask])
-        loss_conf_noobj = bce_loss(pds[noobj_mask],tconf[noobj_mask])
-        loss_conf = self.noobject_scale*loss_conf_noobj+self.object_scale*loss_conf_obj
-        res['obj'] = loss_conf_obj.item()
-        res['conf'] = loss_conf.item()
+        
+          loss_conf_obj = bce_loss(pds[obj_mask],tconf[obj_mask])
+          try:
+              loss_conf_noobj = bce_loss(pds[noobj_mask],tconf[noobj_mask])
+          loss_conf = self.noobject_scale*loss_conf_noobj+self.object_scale*loss_conf_obj
+          res['obj'] = loss_conf_obj.item()
+          res['conf'] = loss_conf.item()
+        except:
+          print(noobj_mask,tconf,obj_mask,pds)
         return loss_conf,res
     
     def forward(self,out,gts=None,size=None,infer=False):
