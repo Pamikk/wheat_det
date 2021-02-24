@@ -187,7 +187,7 @@ class YOLOLoss(nn.Module):
             print(pds.cpu().min(),pds.cpu().max())
             print(tconf.cpu().min(),tconf.cpu().max())'''
         res['obj'] = loss_conf_obj.mean().item()
-        res['conf'] = loss_conf.item()/(obj_mask.float().sum()+noobj_mask.float().sum())        
+        res['conf'] = loss_conf.item()/(obj_mask.float().sum().item()+noobj_mask.float().sum().item())        
         return loss_conf,res
     
     def forward(self,out,gts=None,size=None,infer=False):
