@@ -176,7 +176,7 @@ class Trainer:
                     running_loss[k] += display[k]/n
             loss.backward()
             #solve gradient explosion problem caused by large learning rate or small batch size
-            nn.utils.clip_grad_value_(self.net.parameters(), clip_value=2.0) 
+            #nn.utils.clip_grad_value_(self.net.parameters(), clip_value=2.0) 
             #nn.utils.clip_grad_norm_(self.net.parameters(),max_norm=2.0)
             self.optimizer.step()
             del loss

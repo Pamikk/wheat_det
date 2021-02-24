@@ -169,12 +169,15 @@ class YOLOLoss(nn.Module):
         else:
             loss_conf_obj = 0.0
         try:
-            if noobj_mask.sum()>0:
+            if noobj_mask.cpu().numpy().sum()>0:
                 loss_conf_noobj = bce_loss(pds[noobj_mask],tconf[noobj_mask])
             else:
                 loss_conf_noobj = 0.0
         except:
-            print(noobj_mask,tconf,obj_mask,pds)
+            loss_conf_noobj = 0.0
+            print(pds.cpu().min(),pds.cpu().max())
+            print(tconf.cpu().min(),tconf.cpu().max())
+            print(noobj_mask.cpu().min(),noobj_mask.cpu().max())
         loss_conf = self.noobject_scale*loss_conf_noobj+self.object_scale*loss_conf_obj
         res['obj'] = loss_conf_obj.item()
         res['conf'] = loss_conf.item()        

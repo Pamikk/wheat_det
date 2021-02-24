@@ -111,7 +111,9 @@ def color_normalize(img,mean):
     return img
 def add_mosaic(src,ms):
     mnum = 4 #4x4
+    src = src.astype(np.float)
     h,w,_= src.shape
+    val = src.mean()
     patch = min(min(h,w)*ms,15)
     step_h,step_w = h//(mnum+1),w//(mnum+1)
     for i in range(1,mnum+1):
@@ -121,7 +123,7 @@ def add_mosaic(src,ms):
             xu = min(h,step_h*i+ps)
             yl = max(0,step_w*i-ps)
             yu = min(w,step_w*i+ps)
-            src[xl:xu,yl:yu,:] = random.randint(0,255)
+            src[xl:xu,yl:yu,:] = val
     return src
 class VOC_dataset(data.Dataset):
     def __init__(self,cfg,mode='train'):
@@ -162,7 +164,9 @@ class VOC_dataset(data.Dataset):
         mask = (labels[:,ls]<0)|(labels[:,ls+1]<0)|(labels[:,ls+1]>=1)|(labels[:,ls]>=1)
         if mask.float().sum()>0:
             print(aug)
-        labels = labels[~mask,:] 
+        labels = labels[~mask,:]
+        assert labels.min() >= 0
+        assert labels.max() < 1 
         return labels
 
     def pad_to_square(self,img):
