@@ -164,10 +164,10 @@ class YOLOLoss(nn.Module):
     
     def cal_obj_loss(self,pds,target,obj_mask,res):
         noobj_mask,tconf = target
-        assert 0<pds.max()<=1 
-        assert 0<pds.min()<=1
-        assert 0<tconf.max()<=1 
-        assert 0<tconf.min()<=1
+        assert 0<=pds.max()<=1 
+        assert 0<=pds.min()<=1
+        assert 0<=tconf.max()<=1 
+        assert 0<=tconf.min()<=1
         if obj_mask.float().sum()>0:
             loss_conf_obj = bce_loss(pds[obj_mask],tconf[obj_mask])
         else:
