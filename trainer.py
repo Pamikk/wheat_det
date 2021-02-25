@@ -38,7 +38,7 @@ class Trainer:
         self.device = cfg.device
 
         self.optimizer = optim.Adam(self.net.parameters(),lr=cfg.lr,weight_decay=cfg.weight_decay)
-        self.lr_sheudler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,mode='min', factor=cfg.lr_factor, threshold=1,patience=cfg.patience,min_lr=cfg.min_lr)
+        self.lr_sheudler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,mode='min', factor=cfg.lr_factor, threshold=1e-4,patience=cfg.patience,min_lr=cfg.min_lr)
         
         if not(os.path.exists(self.checkpoints)):
             os.mkdir(self.checkpoints)
@@ -115,13 +115,13 @@ class Trainer:
             print('load:'+model_path)
             info = torch.load(model_path)
             self.net.load_state_dict(info['net'])
-            '''if not(self.lr_change):
+            if not(self.lr_change):
                 self.optimizer.load_state_dict(info['optimizer'])#might have bugs about device
                 for state in self.optimizer.state.values():
                     for k, v in state.items():
                         if isinstance(v, torch.Tensor):
                             state[k] = v.to(self.device)
-                self.lr_sheudler.load_state_dict(info['lr_scheduler'])'''
+                self.lr_sheudler.load_state_dict(info['lr_scheduler'])
             self.start = info['epoch']+1
             self.best_mAP = info['mAP']
             self.best_mAP_epoch = info['mAP_epoch']
@@ -266,8 +266,7 @@ class Trainer:
                         pds_ = [list(pd) for pd in pds_]
                         result ={'bboxes':pds_,'pad':pad,'size':size}
                         res[name] = result
-                    pred_nms = nms(pred,self.conf_threshold, self.nms_threshold)                    
-                    gt = labels[labels[:,0]==b,1:].reshape(-1,4)/1024                
+                    pred_nms = nms(pred,self.conf_threshold, self.nms_threshold)ence,min_lr=cfg.min_lr)     
                     pd_num+=pred_nms.shape[0]
                     '''if save:
                         print(pred_nms)
