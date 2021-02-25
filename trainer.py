@@ -38,7 +38,7 @@ class Trainer:
         self.device = cfg.device
 
         self.optimizer = optim.Adam(self.net.parameters(),lr=cfg.lr,weight_decay=cfg.weight_decay)
-        self.lr_sheudler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,mode='min', factor=cfg.lr_factor, threshold=0.0001,patience=cfg.patience,min_lr=cfg.min_lr)
+        self.lr_sheudler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,mode='min', factor=cfg.lr_factor, threshold=1,patience=cfg.patience,min_lr=cfg.min_lr)
         
         if not(os.path.exists(self.checkpoints)):
             os.mkdir(self.checkpoints)

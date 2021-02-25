@@ -183,11 +183,8 @@ class YOLOLoss(nn.Module):
             print(tconf.cpu().min(),tconf.cpu().max())
             print(noobj_mask.cpu().min(),noobj_mask.cpu().max())
         loss_conf = self.noobject_scale*loss_conf_noobj.sum()+self.object_scale*loss_conf_obj.sum()
-        '''if loss_conf.item()>10.0:
-            print(pds.cpu().min(),pds.cpu().max())
-            print(tconf.cpu().min(),tconf.cpu().max())'''
         res['obj'] = loss_conf_obj.mean().item()
-        res['conf'] = loss_conf.item()/(obj_mask.float().sum().item()+noobj_mask.float().sum().item())        
+        res['conf'] = loss_conf.item()/(obj_mask.float().sum().item()+1)      
         return loss_conf,res
     
     def forward(self,out,gts=None,size=None,infer=False):
