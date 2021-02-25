@@ -123,6 +123,8 @@ class YOLOLoss(nn.Module):
         ys = torch.sigmoid(pred[...,1])#dys
         ws = pred[...,2]
         hs = pred[...,3]
+        #ws = torch.tanh(pred[...,2])*3
+        #hs = torch.tanh(pred[...,3])*3
         assert not torch.isnan(ws).any()
         assert not torch.isnan(hs).any()
         assert not torch.isinf(ws).any()

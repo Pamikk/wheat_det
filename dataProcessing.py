@@ -252,14 +252,16 @@ class VOC_dataset(data.Dataset):
         for i,bboxes in enumerate(labels):
             if len(bboxes)>0:
                 label = torch.zeros(len(bboxes),ls+5)
+                idx = torch.argsort(torch.maximum(bboxes[:,2],bboxes[:,3]))
+                label[:,1:] = bboxes[idx]
                 label[:,1:] = bboxes
                 label[:,0] = i
                 tmp.append(label)
         if len(tmp)>0:
             labels = torch.cat(tmp,dim=0)
             labels = labels.reshape(-1,ls+5)
-            idx = torch.argsort(labels[:,ls+2],descending=True)
-            labels = labels[idx,:].reshape(-1,ls+5)
+            #idx = torch.argsort(labels[:,ls+2],descending=True)
+            #labels = labels[idx,:].reshape(-1,ls+5)
         else:
             labels = torch.tensor(tmp,dtype=torch.float).reshape(-1,ls+5)
         if self.mode=='train':
