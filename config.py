@@ -4,13 +4,15 @@ import random
 import json
 
 from stats import kmeans
-anchors =[[0.038, 0.036], [0.059, 0.048], [0.066, 0.063], [0.066, 0.071], [0.092, 0.079], [0.102, 0.085], [0.105, 0.105], [0.146, 0.138], [0.186, 0.168]]
-#anchors = 
+anchors =[[0.037, 0.035], [0.055, 0.044], [0.064, 0.061], [0.067, 0.07], [0.086, 0.073], [0.089, 0.073], [0.099, 0.097], [0.114, 0.103], [0.146, 0.153], [0.18, 0.155]]
+#anchors = [[0.038, 0.037], [0.058, 0.048], [0.066, 0.064], [0.067, 0.072], [0.092, 0.079], [0.103, 0.084], [0.104, 0.106], [0.147, 0.138], [0.187, 0.168]]
 path ='data/train.json' #annotation path for anchor calculation
-def cal_anchors(sizes=None,num=9):
+def cal_anchors(sizes=None,num=10):
     # randomly scale as sizes if sizes is not None    
     annos = json.load(open(path,'r'))
     allb = []
+    mw,mh=0,0
+    miw,mih=1,1
     for name in annos:
         anno = annos[name]
         size = anno['size']
@@ -20,12 +22,20 @@ def cal_anchors(sizes=None,num=9):
             if bw<0 or bh<0:
                 print(name,bbox)
                 exit()
+            if bw==0 or bh==0:
+                print(bbox)
+                continue
             t = max(w,h)
             if sizes == None:
                 scale = t
             else:
                 scale = sizes
             allb.append((bw/t,bh/t))
+            mw = max(bw/t,mw)
+            miw = min(bw/t,miw)
+            mh = max(bh/t,mh)
+            mih = min(bh/t,mih)
+    print(mw,miw,mh,mih)
     km = kmeans(allb,k=num,max_iters=1000)
     km.initialization()
     km.iter(0)
@@ -52,7 +62,7 @@ class Config:
         #self.anchors = [[0.26533935,0.33382434],[0.66550966,0.56042827],[0.0880948,0.11774004]] #w,h normalized by max size
         #self.anchors = [[0.76822971,0.57259308],[0.39598597,0.47268035],[0.20632625,0.26720238],[0.07779112,0.10330848]]
         self.anchors= anchors  
-        self.anchor_divide=[(7,8),(4,5,6),(0,1,2,3)]
+        self.anchor_divide=[(7,8,9),(4,5,6),(0,1,2,3)]
         self.anchor_num = len(self.anchors)
         
         self.bs = 8       

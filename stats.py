@@ -4,8 +4,8 @@ def cal_iou_distance_mat(obj1,obj2):
     #1-iou
     obj1 = obj1.reshape(-1,2)
     obj2 = obj2.reshape(-1,2)
-    inter = np.minimum(obj1[:,0].reshape(1,-1),obj2[:,0].reshape(-1,1))*np.minimum(obj1[:,1].reshape(1,-1),obj2[:,1].reshape(-1,1))
-    union = (obj1[:,0]*obj1[:,1]).reshape(1,-1) + (obj2[:,0]*obj2[:,1]).reshape(-1,1) - inter
+    inter = np.minimum(obj1[:,0].reshape(-1,1),obj2[:,0].reshape(1,-1))*np.minimum(obj1[:,1].reshape(-1,1),obj2[:,1].reshape(1,-1))
+    union = (obj1[:,0]*obj1[:,1]).reshape(-1,1) + (obj2[:,0]*obj2[:,1]).reshape(1,-1) - inter
     return 1-inter/union
 def cal_iou_distance(obj1,obj2):
     #1-iou
@@ -42,7 +42,9 @@ class kmeans(object):
     def cal_center_distance(self,obj1,obj2):
         return cal_iou_distance_mat(obj1,obj2)
     def cal_distance(self,obj1,obj2):
-        return cal_iou_distance(obj1,obj2)
+        #dis = ((obj2[:,0]/obj1[0]-1)**2+(obj2[:,1]/obj1[1]-1)**2).reshape(self.k,-1).sum(1)
+        dis = cal_iou_distance(obj1,obj2)
+        return dis
     def update_assign(self):
         self.terminate = True
         centers = self.centers
@@ -68,11 +70,11 @@ class kmeans(object):
             else:
                 return self.iter(num+1)
     def print_cs(self):
-        for i in range(self.k):
-            print(round(self.centers[i,0],3),round(self.centers[i,1],3),np.sum(self.assign==i))
+        #for i in range(self.k):
+            #print(round(self.centers[i,0],3),round(self.centers[i,1],3),np.sum(self.assign==i))
         centers = np.sort(np.around(self.centers,3),axis=0)        
-        dis = self.cal_center_distance(centers,centers)
-        print(dis[dis>1e-16].mean())
+        dis = 1-self.cal_center_distance(centers,centers)
+        print(dis[dis>0.001].mean())
     def get_centers(self):
         centers = np.sort(np.around(self.centers,3),axis=0)  
         return [list(c) for c in centers]

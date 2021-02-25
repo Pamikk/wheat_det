@@ -19,7 +19,9 @@ def iou_wo_center(w1,h1,w2,h2):
     #return a vector nx1
     inter = torch.min(w1,w2)*torch.min(h1,h2)
     union = w1*h1 + w2*h2 - inter
-    ious = inter/union
+    ious = (inter+1e-16)/(union+1e-16)
+    if torch.isnan(ious).any():
+        print('nan in iou')
     ious[ious!=ious] = torch.tensor(0.0,device=w1.device) #avoid nans
     return ious
 def generalized_iou(bbox1,bbox2):
@@ -57,8 +59,13 @@ def generalized_iou(bbox1,bbox2):
     area1 = bbox1[:,2]*bbox1[:,3]
     area2 = bbox2[:,2]*bbox2[:,3]
     union = area1+area2 - inter
-    ious = inter/union
-    gious = ious-(cover-union)/cover
+    ious = inter/(union+1e-16)
+    gious = ious-(cover-union)/(cover+1e-16)
+    
+    if torch.isnan(ious).any():
+        print('nan in iou')
+    if torch.isnan(gious).any():
+        print('nan in iou')
     ious[ious!=ious] = torch.tensor(0.0,device=bbox1.device) #avoid nans
     gious[gious!=gious] = torch.tensor(0.0,device=bbox1.device) #avoid nans
     return ious,gious

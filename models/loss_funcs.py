@@ -136,6 +136,10 @@ class YOLOLoss(nn.Module):
         pd_bboxes[...,1] = (ys + grid_y)/self.grid_size[0]
         pd_bboxes[...,2] = torch.clamp(torch.exp(ws)*self.anchors_w,min=0.0,max=1.0)
         pd_bboxes[...,3] = torch.clamp(torch.exp(hs)*self.anchors_h,min=0.0,max=1.0)
+        assert not torch.isnan(pd_bboxes).any()
+        assert not torch.isnan(pd_bboxes).any()
+        assert not torch.isinf(pd_bboxes).any()
+        assert not torch.isinf(pd_bboxes).any()
         nb = pred.shape[0]       
         if infer:   
             return torch.cat((pd_bboxes.view(nb,-1,4),conf.view(nb,-1,1)),dim=-1)
