@@ -115,13 +115,13 @@ class Trainer:
             print('load:'+model_path)
             info = torch.load(model_path)
             self.net.load_state_dict(info['net'])
-            if not(self.lr_change):
+            '''if not(self.lr_change):
                 self.optimizer.load_state_dict(info['optimizer'])#might have bugs about device
                 for state in self.optimizer.state.values():
                     for k, v in state.items():
                         if isinstance(v, torch.Tensor):
                             state[k] = v.to(self.device)
-                self.lr_sheudler.load_state_dict(info['lr_scheduler'])
+                self.lr_sheudler.load_state_dict(info['lr_scheduler'])'''
             self.start = info['epoch']+1
             self.best_mAP = info['mAP']
             self.best_mAP_epoch = info['mAP_epoch']
@@ -149,6 +149,16 @@ class Trainer:
         #adjust learning rate manually
         for param_group in self.optimizer.param_groups:
             param_group['lr']*=lr_factor
+    def check_grad_norm(self):
+        total_norm=0
+        max_norm=0
+        
+        for p in self.net.parameters():
+            param_norm = p.grad.data.norm(2)
+            total_norm += param_norm.item() ** 2
+            max_norm = max(param_norm.item(),max_norm)
+        total_norm = total_norm ** (1. / 2)
+        print(total_norm,max_norm)
     def warm_up(self,epoch):
         if len(self.base_epochs)==0:
             return False
@@ -176,7 +186,7 @@ class Trainer:
                     running_loss[k] += display[k]/n
             loss.backward()
             #solve gradient explosion problem caused by large learning rate or small batch size
-            #nn.utils.clip_grad_value_(self.net.parameters(), clip_value=2.0) 
+            #nn.utils.clip_grad_value_(self.net.parameters(), clip_value=2.0)             
             #nn.utils.clip_grad_norm_(self.net.parameters(),max_norm=2.0)
             self.optimizer.step()
             del loss
@@ -192,7 +202,7 @@ class Trainer:
         print(self.optimizer.param_groups[0]['lr'])
         epoch = self.start
         stop_epochs = 0
-        #torch.autograd.set_detect_anomaly(True)
+        #
         while epoch < self.total and stop_epochs<self.early_stop_epochs:
             running_loss = self.train_one_epoch()            
             lr = self.optimizer.param_groups[0]['lr']

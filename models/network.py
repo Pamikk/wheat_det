@@ -60,8 +60,6 @@ class YOLO(nn.Module):
         self.decoders = nn.ModuleList(decoders)
         self.loss = LossAPI(cfg,loss)
     def initialization(self):
-        for m in self.modules():
-            init_weights(m)
         with open(self.path, "rb") as f:
             header = np.fromfile(f, dtype=np.int32, count=5)  # First five are header values
             self.header_info = header  # Needed to write header when saving weights

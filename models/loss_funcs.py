@@ -123,6 +123,10 @@ class YOLOLoss(nn.Module):
         ys = torch.sigmoid(pred[...,1])#dys
         ws = pred[...,2]
         hs = pred[...,3]
+        assert not torch.isnan(ws).any()
+        assert not torch.isnan(hs).any()
+        assert not torch.isinf(ws).any()
+        assert not torch.isinf(hs).any()
         conf = torch.sigmoid(pred[...,4])#Object score
         #grid,anchors
         
@@ -130,8 +134,8 @@ class YOLOLoss(nn.Module):
         pd_bboxes = torch.zeros_like(pred[...,:4],dtype=torch.float,device=self.device)
         pd_bboxes[...,0] = (xs + grid_x)/self.grid_size[1]
         pd_bboxes[...,1] = (ys + grid_y)/self.grid_size[0]
-        pd_bboxes[...,2] = torch.exp(ws)*self.anchors_w
-        pd_bboxes[...,3] = torch.exp(hs)*self.anchors_h
+        pd_bboxes[...,2] = torch.clamp(torch.exp(ws)*self.anchors_w,min=0.0.max=1.0)
+        pd_bboxes[...,3] = torch.clamp(torch.exp(hs)*self.anchors_h,min=0.0.max=1.0)
         nb = pred.shape[0]       
         if infer:   
             return torch.cat((pd_bboxes.view(nb,-1,4),conf.view(nb,-1,1)),dim=-1)
