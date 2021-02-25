@@ -134,8 +134,8 @@ class YOLOLoss(nn.Module):
         pd_bboxes = torch.zeros_like(pred[...,:4],dtype=torch.float,device=self.device)
         pd_bboxes[...,0] = (xs + grid_x)/self.grid_size[1]
         pd_bboxes[...,1] = (ys + grid_y)/self.grid_size[0]
-        pd_bboxes[...,2] = torch.clamp(torch.exp(ws)*self.anchors_w,min=0.0.max=1.0)
-        pd_bboxes[...,3] = torch.clamp(torch.exp(hs)*self.anchors_h,min=0.0.max=1.0)
+        pd_bboxes[...,2] = torch.clamp(torch.exp(ws)*self.anchors_w,min=0.0,max=1.0)
+        pd_bboxes[...,3] = torch.clamp(torch.exp(hs)*self.anchors_h,min=0.0,max=1.0)
         nb = pred.shape[0]       
         if infer:   
             return torch.cat((pd_bboxes.view(nb,-1,4),conf.view(nb,-1,1)),dim=-1)
@@ -188,7 +188,7 @@ class YOLOLoss(nn.Module):
             print(noobj_mask.cpu().min(),noobj_mask.cpu().max())
         loss_conf = self.noobject_scale*loss_conf_noobj.sum()+self.object_scale*loss_conf_obj.sum()
         res['obj'] = loss_conf_obj.mean().item()
-        res['conf'] = loss_conf.item()/(obj_mask.float().sum().item()+1)      
+        res['conf'] = loss_conf.item()/(pds.shape[0])      
         return loss_conf,res
     
     def forward(self,out,gts=None,size=None,infer=False):
@@ -212,7 +212,7 @@ class YOLOLoss(nn.Module):
         if nm>0:            
             loss_reg,res = self.cal_bbox_loss(pds_bbox,tbboxes,obj_mask,res)
             total = nm*self.reg_scale*loss_reg+loss_obj
-            res['all'] = total.item()/nm
+            res['all'] = total.item()/nb
         else:
             total = loss_obj
             res['all'] = res['conf']
