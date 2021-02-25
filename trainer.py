@@ -61,7 +61,7 @@ class Trainer:
         self.best_mAP = 0
         self.best_mAP_epoch = 0
         self.movingLoss = 0
-        self.bestMovingLoss = 10000
+        self.bestMovingLoss = 1e9
         self.bestMovingLossEpoch = 1e9
 
         self.early_stop_epochs = 50
@@ -136,6 +136,7 @@ class Trainer:
             self.bestMovingLoss = loss
             self.bestMovingLossEpoch = epoch
             self.save_epoch('bestm',epoch)
+            print(f'loss decrease: {self.bestMovingLoss}')
     def logMemoryUsage(self, additionalString=""):
         if torch.cuda.is_available():
             print(additionalString + "Memory {:.0f}Mb max, {:.0f}Mb current".format(
