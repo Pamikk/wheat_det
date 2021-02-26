@@ -266,7 +266,8 @@ class Trainer:
                         pds_ = [list(pd) for pd in pds_]
                         result ={'bboxes':pds_,'pad':pad,'size':size}
                         res[name] = result
-                    pred_nms = nms(pred,self.conf_threshold, self.nms_threshold)   
+                    pred_nms = nms(pred,self.conf_threshold, self.nms_threshold)                    
+                    gt = labels[labels[:,0]==b,1:].reshape(-1,4)/1024    
                     pd_num+=pred_nms.shape[0]
                     '''if save:
                         print(pred_nms)
