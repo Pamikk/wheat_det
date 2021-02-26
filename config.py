@@ -95,7 +95,7 @@ class Config:
             self.flip = True
             self.rot = 25
             self.crop = 0.25
-            self.trans = .2
+            self.trans = .3
             self.scale = 0.2
             self.valid_scale = 0.25
             self.mosaic = 0.01
