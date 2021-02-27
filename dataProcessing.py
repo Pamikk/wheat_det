@@ -136,10 +136,7 @@ class VOC_dataset(data.Dataset):
         self.accm_batch = 0
         self.size = random.choice(cfg.sizes)
     def __len__(self):
-        if self.mode=='train':
-            return 2*len(self.imgs)
-        else:
-            return len(self.imgs)
+        return len(self.imgs)
 
     def img_to_tensor(self,img):
         data = torch.tensor(np.transpose(img,[2,0,1]),dtype=torch.float)
