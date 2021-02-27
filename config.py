@@ -55,7 +55,7 @@ class Config:
         self.multiscale = 1
         self.sizes = [512]#list(range(self.size-32*self.multiscale,self.size+1,32)) 
         self.nms_threshold = 0.5
-        self.dc_threshold = 0.95
+        self.dc_threshold = 0.9
         
         
         #loss args
