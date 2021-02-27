@@ -123,7 +123,7 @@ def add_mosaic(src,ms):
             xu = min(h,step_h*i+ps)
             yl = max(0,step_w*i-ps)
             yu = min(w,step_w*i+ps)
-            src[xl:xu,yl:yu,:] = val
+            src[xl:xu,yl:yu,:] = (np.random.rand(xu-xl,yu-yl,3)*255).astype(np.uint8)
     return src
 class VOC_dataset(data.Dataset):
     def __init__(self,cfg,mode='train'):
