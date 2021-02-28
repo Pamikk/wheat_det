@@ -113,12 +113,11 @@ def add_mosaic(src,ms):
     mnum = 4 #4x4
     src = src.astype(np.float)
     h,w,_= src.shape
-    val = src.mean()
-    patch = min(min(h,w)*ms,15)
+    patch = min(random.randint(1,min(h,w)*ms),12)
     step_h,step_w = h//(mnum+1),w//(mnum+1)
     for i in range(1,mnum+1):
         for j in range(1,mnum+1):
-            ps = int(random.uniform(1,patch))
+            ps = int(patch)
             xl = max(0,step_h*i-ps)
             xu = min(h,step_h*i+ps)
             yl = max(0,step_w*i-ps)
@@ -136,7 +135,10 @@ class VOC_dataset(data.Dataset):
         self.accm_batch = 0
         self.size = random.choice(cfg.sizes)
     def __len__(self):
-        return len(self.imgs)
+        if self.mode=='train':
+            return 2*len(self.imgs)
+        else:
+            return len(self.imgs)
 
     def img_to_tensor(self,img):
         data = torch.tensor(np.transpose(img,[2,0,1]),dtype=torch.float)
@@ -293,9 +295,3 @@ class Testset(data.Dataset):
         data = self.img_to_tensor(img)
         info ={'size':(h,w),'img_id':name,'pad':pad}
         return data,info
-                
-
-
-
-
-
