@@ -113,7 +113,7 @@ def add_mosaic(src,ms):
     mnum = 4 #4x4
     src = src.astype(np.float)
     h,w,_= src.shape
-    patch = min(random.randint(1,min(h,w)*ms),12)
+    patch = min(random.randint(1,int(min(h,w)*ms)),12)
     step_h,step_w = h//(mnum+1),w//(mnum+1)
     for i in range(1,mnum+1):
         for j in range(1,mnum+1):
