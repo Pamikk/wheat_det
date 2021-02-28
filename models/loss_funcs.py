@@ -183,14 +183,14 @@ class YOLOLoss(nn.Module):
         if obj_mask.float().sum()>0:
             loss_conf_obj = bce_loss(pds[obj_mask],tconf[obj_mask])
         else:
-            loss_conf_obj = 0.0
+            loss_conf_obj = torch.tensor([0.0],device=pds.device,dtype=pds.dtype)
         try:
             if noobj_mask.float().cpu().sum()>0:
                 loss_conf_noobj = bce_loss(pds[noobj_mask],tconf[noobj_mask])
             else:
-                loss_conf_noobj = 0.0
+                loss_conf_noobj = torch.tensor([0.0],device=pds.device,dtype=pds.dtype)
         except:
-            loss_conf_noobj = 0.0
+            loss_conf_noobj = torch.tensor([0.0],device=pds.device,dtype=pds.dtype)
             print(pds.cpu().min(),pds.cpu().max())
             print(tconf.cpu().min(),tconf.cpu().max())
             print(noobj_mask.cpu().min(),noobj_mask.cpu().max())
