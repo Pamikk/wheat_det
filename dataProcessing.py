@@ -124,6 +124,7 @@ def add_mosaic(src,ms):
             yu = min(w,step_w*i+ps)
             src[xl:xu,yl:yu,:] = (np.random.rand(xu-xl,yu-yl,3)*255).astype(np.uint8)
     return src
+aug_options = ['flip','rot','trans','crop','mosaic','valid']
 class VOC_dataset(data.Dataset):
     def __init__(self,cfg,mode='train'):
         self.img_path = cfg.img_path
@@ -191,29 +192,24 @@ class VOC_dataset(data.Dataset):
         h,w = img.shape[:2]        
         labels = self.gen_gts(anno)
         if (self.mode=='train'):
-            aug = []
+            aug = []            
             if (idx%self.aug_num)!=0:
-                if self.cfg.flip:
+                aug = random.sample(aug_options,k=random.randint(1,len(aug_options)))
+                if self.cfg.flip and ('flip' in aug):
                     img,labels = flip(img,labels)
-                    aug.append('flip')
-                if self.cfg.rot:
+                if self.cfg.rot and ('rot' in aug):
                     ang = random.uniform(-self.cfg.rot,self.cfg.rot)
                     scale = random.uniform(1-self.cfg.scale,1+self.cfg.scale)
                     img,labels = rotate(img,labels,ang,scale)
-                    aug.append('rotate')
-                if self.cfg.trans:
+                if self.cfg.trans and ('trans' in aug):
                     img,labels = translate(img,labels,self.cfg.trans)
-                    aug.append('trans')
-                if self.cfg.crop:
-                    img,labels = crop(img,labels,self.cfg.crop)
-                    aug.append('crop')            
-                if self.cfg.valid_scale:
+                if self.cfg.crop and ('crop' in aug):
+                    img,labels = crop(img,labels,self.cfg.crop)         
+                if self.cfg.valid_scale and ('valid' in aug):
                     vs = random.uniform(-self.cfg.valid_scale,self.cfg.valid_scale)
                     img= valid_scale(img,vs)
-                    aug.append('change_valid')
-                if self.cfg.mosaic:
+                if self.cfg.mosaic and ('mosaic' in aug):
                     img= add_mosaic(img,self.cfg.mosaic)
-                    aug.append('add_mosaic')
             
             img,pad = self.pad_to_square(img)
             size = img.shape[0]
