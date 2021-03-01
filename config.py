@@ -94,12 +94,12 @@ class Config:
             
             #augmentation parameter
             self.flip = True
-            self.rot = 25
-            self.crop = 0.25
-            self.trans = .35
+            self.rot = 20
+            self.crop = 0.2
+            self.trans = .3
             self.scale = 0.2
-            self.valid_scale = 0.25
-            self.mosaic = 0.02
+            self.valid_scale = 0.2
+            self.mosaic = 0.01
 
         elif mode=='val':
             self.size = 512
