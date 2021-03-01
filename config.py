@@ -90,7 +90,7 @@ class Config:
         if mode=='train':
             self.file=f'./data/train.json'
             self.bs = 32 # batch size
-            self.aug = 3
+            self.aug_num = 3
             
             #augmentation parameter
             self.flip = True
