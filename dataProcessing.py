@@ -134,9 +134,11 @@ class VOC_dataset(data.Dataset):
         self.mode = mode
         self.accm_batch = 0
         self.size = random.choice(cfg.sizes)
+        if mode=='train':
+            self.aug_num = int(cfg.aug_num)
     def __len__(self):
         if self.mode=='train':
-            return 2*len(self.imgs)
+            return self.aug_num*len(self.imgs)
         else:
             return len(self.imgs)
 
@@ -179,7 +181,7 @@ class VOC_dataset(data.Dataset):
 
     def __getitem__(self,idx):
         if self.mode=='train':
-            name = self.imgs[idx//2]
+            name = self.imgs[idx//self.aug_num]
         else:
             name = self.imgs[idx]
         anno = self.annos[name]
@@ -190,26 +192,26 @@ class VOC_dataset(data.Dataset):
         labels = self.gen_gts(anno)
         if (self.mode=='train'):
             aug = []
-            if idx%2==0:
-                if (random.randint(0,1)==1) and self.cfg.flip:
+            if (idx%self.aug_num)!=0:
+                if self.cfg.flip:
                     img,labels = flip(img,labels)
                     aug.append('flip')
-                if (random.randint(0,1)==1) and self.cfg.rot:
+                if self.cfg.rot:
                     ang = random.uniform(-self.cfg.rot,self.cfg.rot)
                     scale = random.uniform(1-self.cfg.scale,1+self.cfg.scale)
                     img,labels = rotate(img,labels,ang,scale)
                     aug.append('rotate')
-                if (random.randint(0,1)==1) and self.cfg.trans:
+                if self.cfg.trans:
                     img,labels = translate(img,labels,self.cfg.trans)
                     aug.append('trans')
-                if (random.randint(0,1)==1) and self.cfg.crop:
+                if self.cfg.crop:
                     img,labels = crop(img,labels,self.cfg.crop)
                     aug.append('crop')            
-                if (random.randint(0,1)==1) and self.cfg.valid_scale:
+                if self.cfg.valid_scale:
                     vs = random.uniform(-self.cfg.valid_scale,self.cfg.valid_scale)
                     img= valid_scale(img,vs)
                     aug.append('change_valid')
-                if (random.randint(0,1)==1) and self.cfg.mosaic:
+                if self.cfg.mosaic:
                     img= add_mosaic(img,self.cfg.mosaic)
                     aug.append('add_mosaic')
             
