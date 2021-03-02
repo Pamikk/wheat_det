@@ -195,20 +195,20 @@ class VOC_dataset(data.Dataset):
             aug = []            
             if (idx%self.aug_num)!=0:
                 aug = random.sample(aug_options,k=random.randint(1,len(aug_options)))
-                if self.cfg.flip and ('flip' in aug):
+                if ('flip' in aug):
                     img,labels = flip(img,labels)
-                if self.cfg.rot and ('rot' in aug):
+                if ('rot' in aug):
                     ang = random.uniform(-self.cfg.rot,self.cfg.rot)
                     scale = random.uniform(1-self.cfg.scale,1+self.cfg.scale)
                     img,labels = rotate(img,labels,ang,scale)
-                if self.cfg.trans and ('trans' in aug):
+                if ('trans' in aug):
                     img,labels = translate(img,labels,self.cfg.trans)
-                if self.cfg.crop and ('crop' in aug):
+                if ('crop' in aug):
                     img,labels = crop(img,labels,self.cfg.crop)         
-                if self.cfg.valid_scale and ('valid' in aug):
+                if ('valid' in aug):
                     vs = random.uniform(-self.cfg.valid_scale,self.cfg.valid_scale)
                     img= valid_scale(img,vs)
-                if self.cfg.mosaic and ('mosaic' in aug):
+                if ('mosaic' in aug):
                     img= add_mosaic(img,self.cfg.mosaic)
             
             img,pad = self.pad_to_square(img)

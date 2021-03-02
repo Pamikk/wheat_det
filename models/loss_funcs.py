@@ -194,7 +194,7 @@ class YOLOLoss(nn.Module):
             print(pds.cpu().min(),pds.cpu().max())
             print(tconf.cpu().min(),tconf.cpu().max())
             print(noobj_mask.cpu().min(),noobj_mask.cpu().max())
-        loss_conf = self.noobject_scale*loss_conf_noobj.sum()+self.object_scale*loss_conf_obj.sum()
+        loss_conf = self.noobject_scale*loss_conf_noobj.mean()+self.object_scale*loss_conf_obj.mean()
         res['obj'] = loss_conf_obj.mean().item()
         res['conf'] = loss_conf.item()/(pds.shape[0])      
         return loss_conf,res
@@ -219,7 +219,7 @@ class YOLOLoss(nn.Module):
         nm = obj_mask.float().sum()                   
         if nm>0:            
             loss_reg,res = self.cal_bbox_loss(pds_bbox,tbboxes,obj_mask,res)
-            total = nm*self.reg_scale*loss_reg+loss_obj
+            total = nm*(self.reg_scale*loss_reg+loss_obj)
             res['all'] = total.item()/nb
         else:
             total = loss_obj

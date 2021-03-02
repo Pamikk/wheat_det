@@ -81,7 +81,7 @@ class Config:
         self.adjust_lr = False
         #loss hyp
         self.obj_scale = 1
-        self.noobj_scale = 0.5
+        self.noobj_scale = 1
         self.cls_scale = 1
         self.reg_scale = 1 #for giou
         self.ignore_threshold = 0.5
@@ -94,8 +94,8 @@ class Config:
             
             #augmentation parameter
             self.flip = True
-            self.rot = 20
-            self.crop = 0.2
+            self.rot = 25
+            self.crop = 0.25
             self.trans = .3
             self.scale = 0.2
             self.valid_scale = 0.2
